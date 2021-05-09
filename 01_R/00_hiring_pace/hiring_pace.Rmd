@@ -1,0 +1,492 @@
+---
+title: 'WSJ: Recreating Hiring Pace Visualizatons'
+author: "Kurtis Pivert"
+date: "5/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+```{r, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(patchwork)
+require(ggwaffle)
+require(ggtext)
+require(emojifont)
+require(tidyverse)
+
+```
+
+
+# WSJ Graphics Recreation 
+
+The [WSJ Graphics](https://twitter.com/WSJGraphics) team does an incredible job communicating complex data simply. 
+
+I wanted to learn the WSJ style by recreating some of the graphics printed 
+in the WSJ. 
+
+This script recreates the first graphic from the front page in the May 8
+4-star print edition.
+
+```{r}
+
+bls <- read_csv(
+  here::here("00_data", "00_hiring_pace/PAYEMS.csv") 
+  ) 
+
+```
+
+
+```{r}
+# Clean Data
+
+# Convert to Millions
+
+bls <- bls %>% 
+  mutate(
+    PAYEMS = PAYEMS * 1000
+  ) %>% 
+  
+# Calculate Cumulative Change Since February 2020
+
+  slice(-1) %>% 
+  mutate(
+    prev_month = lead(PAYEMS),
+    change = PAYEMS - 152523000
+  )
+
+```
+
+## Test Viz
+
+```{r}
+ggplot(
+  bls %>% 
+    mutate(dt = row_number()),
+  aes(
+    x = DATE,
+    y = change
+    )
+  ) +
+  geom_step(
+    color = "#ff8200",
+    lwd = 1.2
+  ) +
+  geom_rect(
+    aes(
+      ymin = 0,
+      ymax = change,
+      xmin = DATE,
+      xmax = lead(DATE)
+    ),
+    fill = "#ff8200",
+    alpha = 0.5
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, -25e6, -5e6),
+    labels = as.character(seq(0, -25, -5))
+  ) +
+  expand_limits(
+    y = c(0, -28e6)
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  geom_hline(
+    aes(
+      yintercept = -8.2e6
+    ),
+    linetype = "dotted"
+  ) +
+  annotate(
+    geom = "text",
+    x = lubridate::ymd("2020-11-01"),
+    y = -6e6,
+    label = "8.2 million fewer jobs",
+    family = "Lato"
+  ) +
+  geom_curve(
+    aes(
+      x = lubridate::ymd("2020-9-01"),
+      y = -6e6,
+      xend = lubridate::ymd("2020-08-15"),
+      yend = -8e6
+    ),
+    curvature = 0.4,
+    arrow = arrow(
+      length = unit(0.2, units = "cm"),
+      type = "closed")
+  ) +
+  labs(
+    title = "Total nonfarm payrolls, cumulative change since February 2020",
+    y = "", 
+    x = ""
+  ) +
+  theme(
+    plot.title = element_text(family = "Lato Black")
+  ) 
+
+  # scale_x_continuous(
+  #   # date_breaks = "1 month",
+  #   labels = c("Feb. 2020", rep("", 10), "2021", rep("", 3))
+  # )
+
+```
+
+
+# Take Two Without X-axis Date
+
+```{r}
+cum_loss <- ggplot(
+  bls %>% 
+    mutate(dt = row_number()),
+  aes(
+    x = dt,
+    y = change
+    )
+  ) +
+  geom_step(
+    color = "#ff8200",
+    lwd = 1.2
+  ) +
+  geom_rect(
+    aes(
+      ymin = 0,
+      ymax = change,
+      xmin = dt,
+      xmax = lead(dt)
+    ),
+    fill = "#ff8200",
+    alpha = 0.5
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, -25e6, -5e6),
+    labels = c("0", str_c("\u2212", seq(5, 25, 5)))
+  ) +
+  expand_limits(
+    y = -25.1e6
+  ) +
+  theme_tufte(
+    base_family = "Lato",
+    base_size = 12
+  ) +
+  geom_hline(
+    aes(
+      yintercept = -8.2e6
+    ),
+    linetype = "dotted"
+  ) +
+  geom_hline(
+    aes(
+      yintercept = 0
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = 9.85,
+    y = -6e6,
+    label = "8.2 million fewer jobs",
+    family = "Lato"
+  ) +
+  geom_curve(
+    aes(
+      x = 8,
+      y = -6e6,
+      xend = 7.5,
+      yend = -8e6
+    ),
+    curvature = 0.4,
+    arrow = arrow(
+      length = unit(0.15, units = "cm"),
+      type = "closed")
+  ) +
+  labs(
+    title = "Total nonfarm payrolls, cumulative change since February 2020",
+    y = "", 
+    x = ""
+  ) +
+  theme(
+    plot.title = element_text(family = "Lato", face = "bold"),
+    text = element_text(family = "Lato", size = 12),
+    axis.text.y = element_text(family = "Arial Narrow", size = 9, vjust = -.8),
+    axis.ticks.y = element_blank(), 
+    panel.grid.major.y = element_line(color = "#efefef")
+  ) +
+  scale_x_continuous(
+    breaks = 1:15,
+    labels = c("Feb. 2020", rep("", 10), "2021", rep("", 3))
+  ) 
+
+cum_loss
+
+ggsave(
+  filename = here::here("02_figs", "hiring_pace.png"),
+  width = 8, 
+  height = 8 * 0.618,
+  units = "in",
+  dpi = 300,
+  type = "cairo"
+)
+  
+```
+
+
+
+# NEXT Step: Jobs Added 
+
+```{r}
+
+# Waffle Data 
+
+# Test Case: Restaurants and Bars
+
+rst_bar <- tibble(
+  x = c(1:40, 1:40, 1:40, 1:40, 1:27),
+  y = c(rep(5, 40), rep(4, 40), rep(3, 40), rep(2, 40), rep(1, 27)), 
+  group = rep("Restaurant", 187)
+) %>% 
+  mutate(
+    label = fontawesome('fa-circle')
+  )
+
+added_1 <-
+  ggplot(
+  rst_bar,
+  aes(
+    x = x, 
+    y = y, 
+    fill = group
+  )
+) +
+geom_text(
+  aes(
+    label=label
+    ), 
+  family='fontawesome-webfont', 
+  size = 3.5,
+  color = "#3D3946"
+  ) +
+  coord_equal() + 
+  expand_limits(y = c(-.5, 5.5)) +
+  theme_waffle() + 
+  labs(
+    x = "", 
+    y = "Restaurants\nand Bars"
+  ) +
+  theme(
+    axis.title.y = element_text(
+      family = "Arial", 
+      angle = 00, 
+      vjust = .5, 
+      hjust = 1
+      )
+  ) +
+  annotate(
+    geom = "text",
+    x = 29, 
+    y = .9,
+    label = "187"
+  ) 
+
+# Arts, entertainement, and recreation
+
+arts <- tibble(
+  x = c(1:40, 1:40, 1:10),
+  y = c(rep(3, 40), rep(2, 40), rep(1, 10)), 
+  group = rep("Arts", 90)
+) %>% 
+  mutate(
+    label = fontawesome('fa-circle')
+  )
+
+added_2 <- ggplot(
+  arts,
+  aes(
+    x = x, 
+    y = y, 
+    fill = group
+  )
+) +
+geom_text(
+  aes(
+    label = label
+    ), 
+  family='fontawesome-webfont', 
+  size = 3.5,
+  color = "#3D3946"
+  ) +
+  coord_equal() + 
+  expand_limits(y = c(-.5, 3.5)) +
+  theme_waffle() + 
+  labs(
+    x = "", 
+    y = "Arts,\nentertainment\nand recreation"
+    ) +
+  theme(
+    axis.title.y = element_text(family = "Arial", angle = 00, hjust = 1)
+  ) +
+  annotate(
+    geom = "text",
+    x = 11.5, 
+    y = .9,
+    label = "90"
+  )
+
+# Accomodation
+
+accomodation <- tibble(
+  x = c(1:27, 1:27),
+  y = c(rep(2, 27), rep(1, 27)), 
+  group = rep("Accomodation", 54)
+) %>% 
+  mutate(
+    label = fontawesome('fa-circle')
+  )
+
+added_3 <- ggplot(
+  accomodation,
+  aes(
+    x = x, 
+    y = y, 
+    fill = group
+  )
+) +
+geom_text(
+  aes(
+    label = label
+    ), 
+  family='fontawesome-webfont', 
+  size = 3.5,
+  color = "#3D3946"
+  ) +
+  coord_equal() + 
+  expand_limits(y = c(-.5, 2.5), x = 40) +
+  theme_waffle() + 
+  labs(
+    x = "", 
+    y = "Accomodation"
+    ) +
+  theme(
+    axis.title.y = element_text(family = "Arial", angle = 00, hjust = .5, vjust = .6)
+  ) +
+  annotate(
+    geom = "text",
+    x = 28.5, 
+    y = 1.5,
+    label = "54"
+  )
+
+# Government
+
+government <- tibble(
+  x = c(1:24, 1:24),
+  y = c(rep(2, 24), rep(1, 24)), 
+  group = rep("Accomodation", 48)
+) %>% 
+  mutate(
+    label = fontawesome('fa-circle')
+  )
+
+added_4 <- ggplot(
+  government,
+  aes(
+    x = x, 
+    y = y, 
+    fill = group
+  )
+) +
+geom_text(
+  aes(
+    label = label
+    ), 
+  family='fontawesome-webfont', 
+  size = 3.5,
+  color = "#3D3946"
+  ) +
+  coord_equal() + 
+  expand_limits(y = c(-.5, 2.5), x = 40) +
+  theme_waffle() + 
+  labs(
+    x = "", 
+    y = "Government"
+    ) +
+  theme(
+    axis.title.y = element_text(
+      family = "Arial", 
+      angle = 00, 
+      hjust = .5, 
+      vjust = .6
+      )
+  ) +
+  annotate(
+    geom = "text",
+    x = 25.5, 
+    y = 1.5,
+    label = "48"
+  )
+
+# Financial
+
+fin <- tibble(
+  x = 1:19,
+  y = rep(1, 19), 
+  group = rep("Fin", 19)
+) %>% 
+  mutate(
+    label = fontawesome('fa-circle')
+  )
+
+added_5 <- ggplot(
+  fin,
+  aes(
+    x = x, 
+    y = y, 
+    fill = group
+  )
+) +
+geom_text(
+  aes(
+    label = label
+    ), 
+  family='fontawesome-webfont', 
+  size = 3.5,
+  color = "#3D3946"
+  ) +
+  coord_equal() + 
+  expand_limits(y = c(-.5, 1.5), x = 40) +
+  theme_waffle() + 
+  labs(
+    x = "", 
+    y = "Financial\nactivities"
+    ) +
+  theme(
+    axis.title.y = element_text(
+      family = "Arial", 
+      angle = 00, 
+      hjust = .5, 
+      vjust = .6
+      )
+  ) +
+  annotate(
+    geom = "text",
+    x = 20.5, 
+    y = 0.5,
+    label = "19"
+  )
+added_1 / added_2 / added_3 / added_4 / added_5
+
+  
+  
+  
+```
+
