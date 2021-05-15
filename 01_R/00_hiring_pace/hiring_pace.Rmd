@@ -229,14 +229,14 @@ cum_loss <- ggplot(
 
 cum_loss
 
-ggsave(
-  filename = here::here("02_figs", "hiring_pace.png"),
-  width = 8, 
-  height = 8 * 0.618,
-  units = "in",
-  dpi = 300,
-  type = "cairo"
-)
+# ggsave(
+#   filename = here::here("02_figs", "hiring_pace.png"),
+#   width = 8, 
+#   height = 8 * 0.618,
+#   units = "in",
+#   dpi = 300,
+#   type = "cairo"
+# )
   
 ```
 

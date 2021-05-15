@@ -1,0 +1,568 @@
+---
+title: 'WSJ: BBA'
+author: "Kurtis Pivert"
+date: "5/10/2021"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        highlight: tango
+        code_folding: show
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+```{r Load Packages, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(ggtext)
+require(gridExtra)
+require(gridtext)
+require(grid)
+require(tidyquant)
+require(tidyverse)
+
+```
+
+```{r Load Data}
+
+# Previously Downloaded and Cleaned Data
+
+df <- read_rds(
+  here::here("00_data", "01_bba/data.rds")
+)
+
+```
+
+
+
+# WSJ Market Update Email
+
+This script tries to recreate the visualization of share performance for:  
+* Bombardier CA:BBD.B
+* Blackstone BX
+* Apple AAPL
+* S&P 500 VOO
+
+## Get Stock Prices from 2020-11-01 to 2021-05-07
+
+```{r Get Stock Prices, eval=FALSE}
+
+# Obtain Stock Prices from Yahoo! Finance via tidyquant
+
+bbd <- tq_get("BBD-B.TO", get = "stock.prices", from = "2020-11-01", to = "2021-05-08")
+bx <- tq_get("BX", get = "stock.prices", from = "2020-11-01", to = "2021-05-08")
+aapl <- tq_get("AAPL", get = "stock.prices", from = "2020-11-01", to = "2021-05-08")
+sp500 <- tq_get("^GSPC", get = "stock.prices", from = "2020-11-01", to = "2021-05-08")
+
+```
+
+## Combine Stock Closing Prices 
+
+```{r Conbine Data, eval=FALSE}
+
+df <- bind_rows(
+  aapl, bx, bbd, sp500
+)
+
+```
+
+## Calculate Percent changes from November 1, 2020
+
+```{r Calculat Pct Change, eval=FALSE}
+
+df <- df %>% 
+  mutate(
+    co_labels = case_when(
+      symbol == "BBD-B.TO" ~ "Bombardier Inc. Cl B",
+      symbol == "BX" ~ "Blackstone Group \nInc.",
+      symbol == "^GSPC" ~ "S&P 500 Index",
+      symbol == "AAPL" ~ "Apple Inc."
+    )
+  ) %>% 
+  group_by(symbol) %>% 
+  mutate(
+    pct_change = (adjusted - adjusted[1]) / adjusted[1]
+  ) %>% 
+  ungroup()
+
+# write_rds(
+#   x = df,
+#   file = here::here(
+#     "00_data", 
+#     "01_bba/data.rds"
+#     )
+#   )
+
+```
+
+
+
+```{r Test Case Using Apple}
+
+filter(df, symbol == "AAPL") %>% 
+  ggplot(
+    aes(
+      x = date, 
+      y = pct_change
+    )
+  ) +
+  geom_line(
+    color = "blue"
+  ) +
+  theme_minimal(
+    base_family = "Roboto Condensed"
+  ) +
+  scale_y_continuous(
+    labels = scales::percent
+  ) +
+  scale_x_date(
+    date_breaks = "month"
+  ) +
+  labs(
+    x = "",
+    y = ""
+  )
+
+```
+
+
+
+```{r Initial Viz}
+
+  ggplot(
+    df, 
+    aes(
+      x = date, 
+      y = pct_change,
+      color = fct_reorder2(symbol, date, pct_change)
+    )
+  ) +
+  geom_line() +
+  expand_limits(y = c(-0.25, 2.75)) + 
+  scale_y_continuous(
+    breaks = seq(-0.25, 2.75, 0.25),
+    labels = c(
+      as.character(seq(-0.25, 2.5, 0.25) * 100),
+      "275%"
+    )
+  ) +
+  # scale_x_date(
+  #   date_breaks = "month",
+  #   # labels = c("", "Dec. 2020", "'21", rep("", 4))
+  # ) +
+  scale_color_manual(
+    values = c(
+      "AAPL" = "#0079AD",
+      "BX" = "#0098DB", 
+      "BBD-B.TO" = "#95CBEF",
+      "^GSPC" = "#BEBEBE"   
+     ), 
+    labels = c(
+      "Bombardier Inc. Cl B",
+      "Blackstone Group \nInc.",
+      "S&P 500 Index",
+      "Apple Inc."
+    ),
+    name = ""
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  geom_hline(
+    yintercept = 0,
+    lwd = .2
+  ) +
+  theme(
+    panel.grid.major.y = element_line(
+      color = "#efefef"
+    ),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = 20, r = -18),
+      family = "Roboto Condensed"),
+    plot.caption = element_text(
+      hjust = 0, 
+      color = "grey62",
+      family = "Roboto Condensed Light"
+      ),
+    plot.title = element_text(
+      family = "Roboto Condensed",
+      face = "bold", 
+      size = 12
+      )
+    ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source:Factset",
+    title = "Share-price and index performance"
+  ) +
+  expand_limits(
+    x = as.Date("2020-10-20")
+  ) 
+  
+
+# ggsave(
+#   filename = here::here("02_figs", "bba_r1.png"),
+#   width = 6.4583,
+#   height = 5.2083, 
+#   units = "in",
+#   type = "cairo"
+# )
+
+
+# test_labs <- c(
+#   "BBD-B.TO" = "<img src='../../../../../Desktop/test_box_2.png' width='20'/>Bombardier Inc. Cl B",
+#   "BX" ~ "Blackstone Group \nInc.",
+#   "^GSPC" ~ "S&P 500 Index",
+#   "AAPL" ~ "Apple Inc.""Bombardier Inc. Cl B",
+#       "Blackstone Group \nInc.",
+#       "S&P 500 Index",
+#       "Apple Inc."
+# )
+
+```
+
+
+```{r Tweak Using hrbrmstr Code}
+
+# Using hrbrmstr example 
+
+# 1. Obtain Values from Last Observation
+
+last_vals <- df %>% 
+  group_by(symbol) %>% 
+  # Great Hack to Pull Last Value
+  slice(n()) %>% 
+  pull(pct_change) %>% 
+  set_names(
+    c("SP500", "Apple", "Bomb", "Blackstone")
+    )
+
+# Alternate Approach Using dplyr `last` function
+
+# df %>% 
+#   group_by(symbol) %>% 
+#   summarize(
+#     across(matches("pct"), last)
+#     )
+
+# 2. Obtain Last Date 
+
+last_date <- df %>% 
+  slice(n()) %>% 
+  pull(date)
+
+# 3. Match Stock Colors
+
+stck_cols <- c(
+  "Apple" = "#0079AD",
+  "Blackstone"= "#0098DB", 
+  "Bomb" = "#95CBEF",
+  "SP500" = "#BEBEBE"   
+)
+
+# 4. Create ggplot object 
+
+gg <- ggplot(
+  df, 
+  aes(
+    x = date, 
+    y = pct_change,
+    color = fct_reorder2(symbol, date, pct_change)
+    )
+  ) +
+  geom_line() +
+  expand_limits(
+    y = c(-0.25, 2.75),
+    x = as.Date("2020-10-20")
+    ) + 
+  scale_y_continuous(
+    breaks = seq(-0.25, 2.75, 0.25),
+    labels = c(
+      as.character(seq(-0.25, 2.5, 0.25) * 100),
+      "275%"
+    )
+  ) +
+  # scale_x_date(
+  #   date_breaks = "month",
+  #   # labels = c("", "Dec. 2020", "'21", rep("", 4))
+  # ) +
+  scale_color_manual(
+    values = c(
+      "AAPL" = "#0079AD",
+      "BX" = "#0098DB", 
+      "BBD-B.TO" = "#95CBEF",
+      "^GSPC" = "#BEBEBE"   
+    ), 
+    labels = c(
+      "Bombardier Inc. Cl B",
+      "Blackstone Group \nInc.",
+      "S&P 500 Index",
+      "Apple Inc."
+    ),
+    name = ""
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  geom_hline(
+    yintercept = 0,
+    lwd = .2
+  ) +
+  theme(
+    panel.grid.major.y = element_line(color = "#efefef"),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = 20, r = -18),
+      family = "Roboto Condensed"
+      ),
+    plot.caption = element_text(
+      hjust = 0, 
+      color = "grey62",
+      family = "Roboto Condensed Light"
+    ),
+    plot.title = element_text(
+      family = "Roboto Condensed",
+      face = "bold", 
+      size = 12
+    ),
+    legend.position = "none",
+    plot.margin = unit(c(1, 7, 2, 1), "lines"), 
+    panel.border = element_blank()
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source: Factset",
+    title = "Share-price and index performance"
+  ) 
+
+# 5. Check Base Plot
+
+gg  
+
+# 6. Manually Annotate Lines 
+
+for (i in 1:length(last_vals)) {
+  gg <- gg +
+    annotation_custom(
+      grob = textGrob(
+        names(last_vals)[i],
+        hjust = 0,
+        gp = gpar(
+          fontsize = 8,
+          col = stck_cols[names(last_vals)[i]]
+        )
+      ),
+  xmin = as.Date("2021-05-08"),
+  xmax = as.Date("2021-05-08"),
+  ymin = last_vals[i],
+  ymax = last_vals[i]
+    )
+}
+
+# 7. Check Plot 
+
+gg
+
+# 8. Create ggplot build 
+
+gb <- ggplot_build(gg)
+
+# 9. Create ggplot gtable 
+
+gt <- ggplot_gtable(gb)
+
+# 10. Turn Off Panel Clipping (?)
+
+gt$layout$clip[gt$layout$name == "panel"] <- "off"
+
+# 11. Output Finished Plot 
+
+grid.draw(gt)
+
+```
+
+
+```{r Extended Tweak Using gridtext}
+
+text_gt <- c(
+  "<img src='/Users/kurtispivert/Documents/00_gh/wsj/02_figs/sp.png' width='9'/> S&P 500 Index",
+  "<img src='/Users/kurtispivert/Documents/00_gh/wsj/02_figs/aapl.png' width='9'/> Apple Inc.",
+  "<img src='/Users/kurtispivert/Documents/00_gh/wsj/02_figs/bomb.png' width='9'/> Bombardier Inc. Cl B",
+  "<img src='/Users/kurtispivert/Documents/00_gh/wsj/02_figs/bx.png' width='9'/> Blackstone Group Inc."
+)
+
+# Use with gridtext 
+
+# 1. Obtain Values from Last Observation
+
+last_vals_gt <- df %>% 
+    group_by(symbol) %>% 
+    slice(n()) %>% 
+    pull(pct_change) %>% 
+    set_names(c("SP500", "Apple", "Bomb", "Blackstone"))
+  
+# 2. Obtain Last Date 
+
+last_date_gt <- df %>% 
+  slice(n()) %>% 
+  pull(date)
+
+# 3. Create ggplot object 
+
+gg_gt <- ggplot(
+    df, 
+    aes(
+      x = date, 
+      y = pct_change,
+      color = fct_reorder2(symbol, date, pct_change)
+    )
+  ) +
+  geom_line() +
+  expand_limits(
+    x = c(as.Date("2020-10-20"), as.Date("2021-05-03")),
+    y = c(-0.25, 2.75)
+    ) + 
+  scale_y_continuous(
+    breaks = seq(-0.25, 2.75, 0.25),
+    labels = c(
+      as.character(seq(-0.25, 2.5, 0.25) * 100),
+      "275%"
+    )
+  ) +
+  scale_x_date(
+    date_breaks = "month",
+    date_labels = "%b '%y"
+  ) +
+  scale_color_manual(
+    values = c(
+      "AAPL" = "#0079AD",
+      "BX" = "#0098DB", 
+      "BBD-B.TO" = "#95CBEF",
+      "^GSPC" = "#BEBEBE"   
+    ), 
+    labels = c(
+      "Bombardier Inc. Cl B",
+      "Blackstone Group \nInc.",
+      "S&P 500 Index",
+      "Apple Inc."
+    ),
+    name = ""
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  geom_hline(
+    yintercept = 0,
+    lwd = .2
+  ) +
+  theme(
+    panel.grid.major.y = element_line(
+      color = "#efefef"
+    ),
+    axis.ticks.y = element_blank(),
+    axis.text.x = element_text(vjust = 2),
+    # axis.ticks.length.x = unit(-.3, "cm"),
+    axis.text.y = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = 20, r = -18),
+      family = "Roboto Condensed"),
+    plot.caption = element_text(
+      hjust = 0, 
+      color = "#a6a6a6",
+      family = "Lato"
+    ),
+    plot.title = element_text(
+      family = "Roboto Condensed",
+      face = "bold", 
+      size = 12
+    ),
+    legend.position = "none",
+    plot.margin = unit(c(1, 12, 2, 1), "lines"), 
+    panel.border = element_blank()
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source: Factset",
+    title = "Share-price and index performance"
+  ) +
+  coord_cartesian(
+    ylim = c(-.25,2.75)
+  )
+
+# 4. Check Base Plot
+
+gg_gt  
+
+# 5. Manually Annotate Lines 
+
+for (i in 1:length(last_vals_gt)) {
+  
+  gg_gt <- gg_gt +
+    annotation_custom(
+      grob = richtext_grob(
+        text_gt[i],
+        hjust = 0,
+        gp = gpar(
+          fontsize = 9,
+          col = "#000000",
+          fontfamily = "Roboto Condensed"
+        )
+      ),
+      xmin = as.Date("2021-05-09"),
+      xmax = as.Date("2021-05-09"),
+      ymin = last_vals[i],
+      ymax = last_vals[i]
+    )
+}
+
+# 6. Check Plot 
+
+gg_gt
+
+# 7. Create ggplot build 
+
+gb_gt <- ggplot_build(gg_gt)
+
+# 8. Create ggplot gtable 
+
+gt_gt <- ggplot_gtable(gb_gt)
+
+# 9. Turn Off Panel Clipping (?)
+
+gt_gt$layout$clip[gt_gt$layout$name == "panel"] <- "off"
+
+# 10. Output Finished Plot 
+
+grid.draw(gt_gt)
+
+# 11. Save Extended Example
+
+# ggsave(
+#   filename = here::here("02_figs", "bba_r2.png"),
+#   # width = 6.4583,
+#   # height = 5.2083,
+#   width = 10 * 1.24,
+#   height = 10,
+#   units = "in",
+#   type = "cairo"
+# )
+
+```
+
+## Further Tweaking 
