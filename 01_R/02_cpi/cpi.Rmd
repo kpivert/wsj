@@ -1,0 +1,1277 @@
+---
+title: "cpi"
+author: "Kurtis Pivert"
+date: "5/19/2021"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        code_folding: show
+---
+
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+```{r Load Packages, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(ggtext)
+require(gridExtra)
+require(gridtext)
+require(grid)
+require(readxl)
+require(patchwork)
+require(tidyverse)
+
+```
+
+```{r Raw Data, message=FALSE}
+
+df <- read_excel(
+  here::here("00_data", "02_cpi/cpi.xls"), 
+  skip = 10
+  ) %>% 
+  filter(
+    observation_date >= lubridate::as_date("1959-01-01")
+  )
+
+cars <- read_csv(
+  here::here("00_data", "02_cpi/cars.csv")
+)
+
+energy <- read_csv(
+  here::here("00_data", "02_cpi/energy.csv")
+)
+
+gas <- read_csv(
+  here::here("00_data", "02_cpi/gas.csv")
+)
+
+airfares <- read_csv(
+  here::here("00_data", "02_cpi/airfares.csv")
+)
+
+furniture <- read_csv(
+  here::here("00_data", "02_cpi/furniture.csv")
+)
+
+```
+
+
+```{r Calculate Percent Change from Prev. Year}
+
+pct_change_fun <- function(
+  data, 
+  num_column, 
+  date_column = DATE, 
+  date = as.Date("2020-01-01")
+  ) {
+  
+  col_to_pct <- enquo(num_column)
+  date_col <- enquo(date_column)
+  
+  pct_df <- data %>% 
+    mutate(
+      last_year = lag(!!col_to_pct, n = 12)
+    ) %>% 
+      rowwise() %>% 
+  mutate(
+    pct_change = (!!col_to_pct - last_year) / last_year
+  ) %>% 
+  ungroup() %>% 
+  filter(
+    !!date_col >= date
+  )
+  
+  return(pct_df)
+  
+}
+
+df <- df %>% 
+  pct_change_fun(
+    num_column = CPIAUCSL,
+    date_column = observation_date,
+    date = as.Date("1960-01-01")
+  )
+
+cars <- cars %>% 
+  pct_change_fun(
+    num_column = CUSR0000SETA02, 
+    date_column = DATE
+  )
+
+energy <- energy %>% 
+  pct_change_fun(
+    num_column = CUSR0000SAH21
+  )
+
+furniture <- furniture %>% 
+  pct_change_fun(
+    num_column = CUSR0000SAH3
+  )
+
+gas <- gas %>% 
+  pct_change_fun(
+    num_column = CUSR0000SETB01
+  )
+
+airfares <- airfares %>% 
+  pct_change_fun(
+    num_column = CUSR0000SETG01
+  )
+
+```
+
+## Motivation
+
+## Initial Viz, Date, Description
+
+For the third installment of my #wsj>ggplot2 project, I tried to recreate 
+above-the-fold visualization illustrating the increse in CPI year over year (YOY). 
+
+## Data Source 
+
+Data came from FRED. 
+
+## Initial Viz 
+
+### Problems and Challenges  
+
+* Axes and spacing
+* First use of inset with [ggpatchwork](https://patchwork.data-imaginist.com/index.html).
+* Aspect ratios and aligning axes
+
+# Part 1: CPI Change YOY Area Chart
+
+```{r}
+
+cpi_viz <- ggplot(
+  df, 
+  aes(
+    x = as.Date(observation_date), 
+    y = pct_change
+    )
+  ) +
+  # Base Theme -----------------------------------------------------------------
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  # Y Axis Text until 8% -------------------------------------------------------
+  scale_y_continuous(
+    breaks = seq(0, 0.08, 0.02),
+    labels = as.character(seq(0, 8, 2))
+  ) +
+  # Y Axis Text 10%-14% --------------------------------------------------------
+  annotate(
+    geom = "text",
+    x = as.Date("1978-09-01"),
+    y = .105,
+    label = "10",
+    family = "Roboto Condensed",
+    size = 3
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("1978-9-01"),
+    y = .125,
+    label = "12",
+    family = "Roboto Condensed",
+    size = 3
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("1979-02-01"),
+    y = .145,
+    label = "14%",
+    family = "Roboto Condensed",
+    size = 3
+  ) +
+  # Manually Create Y axis grid ------------------------------------------------
+  # 0%
+  geom_segment(
+    aes(
+      x = as.Date("1958-01-01"), 
+      y = 0,
+      xend = as.Date("2021-04-01"),
+      yend = 0
+        ),
+    lwd = 0.05
+  ) +
+  # 2%
+  geom_segment(
+    aes(
+      x = as.Date("1958-01-01"), 
+      y = 0.02,
+      xend = as.Date("2021-04-01"),
+      yend = 0.02
+        ),
+    lwd = 0.05
+  ) +
+  # 4%
+   geom_segment(
+    aes(
+      x = as.Date("1958-01-01"), 
+      y = 0.04,
+      xend = as.Date("2008-07-01"),
+      yend = 0.04
+        ),
+    lwd = 0.05
+  ) +
+  # 6%
+   geom_segment(
+    aes(
+      x = as.Date("1958-01-01"), 
+      y = 0.06,
+      xend = as.Date("1990-10-01"),
+      yend = 0.06
+        ),
+    lwd = 0.05
+  ) +
+  # 8%
+   geom_segment(
+    aes(
+      x = as.Date("1958-01-01"), 
+      y = 0.08,
+      xend = as.Date("1982-01-01"),
+      yend = 0.08
+        ),
+    lwd = 0.05
+  ) +
+  # 10%
+  geom_segment(
+    aes(
+      x = as.Date("1974-02-01"), 
+      y = 0.10,
+      xend = as.Date("1981-10-01"),
+      yend = 0.10
+        ),
+    lwd = 0.05
+  ) +
+  # 12%
+  geom_segment(
+    aes(
+      x = as.Date("1974-11-01"), 
+      y = 0.12,
+      xend = as.Date("1980-12-01"),
+      yend = 0.12
+        ),
+    lwd = 0.05
+  ) +
+  # 14%
+  geom_segment(
+    aes(
+      x = as.Date("1978-09-01"), 
+      y = 0.14,
+      xend = as.Date("1980-06-01"),
+      yend = 0.14
+        ),
+    lwd = 0.05
+  ) +
+  # Manually Annotate X Axis Text ----------------------------------------------
+  # 1960
+  annotate(
+    geom = "text",
+    x = as.Date("1960-01-01"),
+    y = -0.01,
+    label = "1960",
+    family = "Lato",
+    size = 3
+  ) +
+  # 1970
+  annotate(
+    geom = "text",
+    x = as.Date("1970-01-01"),
+    y = -0.01,
+    label = "'70",
+    family = "Lato",
+    size = 3
+  ) +
+  # 1980
+  annotate(
+    geom = "text",
+    x = as.Date("1980-01-01"),
+    y = -0.01,
+    label = "'80",
+    family = "Lato",
+    size = 3
+  ) +
+  # 1990
+  annotate(
+    geom = "text",
+    x = as.Date("1990-01-01"),
+    y = -0.01,
+    label = "'90",
+    family = "Lato",
+    size = 3
+  ) +
+  # 2000
+  annotate(
+    geom = "text",
+    x = as.Date("2000-01-01"),
+    y = -0.01,
+    label = "2000",
+    family = "Lato",
+    size = 3
+  ) +
+  # 2010
+  annotate(
+    geom = "text",
+    x = as.Date("2010-01-01"),
+    y = -0.01,
+    label = "'10",
+    family = "Lato",
+    size = 3
+  ) +
+  # 2020
+  annotate(
+    geom = "text",
+    x = as.Date("2020-01-01"),
+    y = -0.01,
+    label = "'20",
+    family = "Lato",
+    size = 3
+  ) +
+  # Add April 2021 Point and Callout -------------------------------------------
+   annotate(
+    geom = "text", 
+    x = as.Date("2021-03-01"), 
+    y = 0.06, 
+    label = "APRIL 2021", 
+    family = "Roboto Condensed",
+    hjust = 1
+    ) +
+  annotate(
+    geom = "text", 
+    x = as.Date("2021-03-01"), 
+    y = 0.05, 
+    label = "+4.2%", 
+    family = "Roboto Condensed",
+    hjust = 1,
+    size = 6
+    ) +
+  geom_point(
+    data = tibble(
+      observation_date = as.Date("2021-04-01"),
+      pct_change = 0.042
+    ),
+    aes(
+      x = observation_date,
+      y = pct_change
+    ),
+    size = .9
+  ) +
+  # Add Y Axis Text ------------------------------------------------------------
+  annotate(
+    geom = "text",
+    x = as.Date("1958-01-01"),
+    y = 0.11, 
+    label = "Consumer price index,\nchange from previous year",
+    hjust = 0,
+    size = 3.5,
+    family = "Roboto Condensed"
+  ) +
+  # Add Plot Title/Explanation -------------------------------------------------
+  annotate(
+    geom = "text",
+    x = as.Date("1958-01-01"),
+    y = 0.19, 
+    label = "Consumer prices climbed in April\nby the most in nearly 13 years,\ndriven partly by sharp\nrises in prices for used\ncars and airline fares.",
+    hjust = 0,
+    size = 5,
+    family = "Roboto"
+  ) +
+  # Add Inset/CPI Components Subhead -------------------------------------------
+  annotate(
+    geom = "text",
+    x = as.Date("1986-01-01"),
+    y = 0.23,
+    label = "Monthly CPI for select categories, change from previous year",
+    hjust = 0,
+    size = 3, 
+    family = "Roboto"
+  ) +
+  # Add Source Caption ---------------------------------------------------------
+  labs(
+    x = "", 
+    y = "",
+    caption = "Note: Seasonally Adjusted\nSource: Labor Department via the Federal Reserve Bank of St. Louis"
+  ) +
+  # Revise Theme Elements to match wsj style -----------------------------------
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = 20, r = -30),
+      family = "Roboto Condensed"),
+    plot.caption = element_text(
+      hjust = 0, 
+      color = "grey62",
+      family = "Roboto Condensed Light"
+      ) 
+    ) +
+  # Revise Plot Limits ---------------------------------------------------------
+  expand_limits(
+    x = as.Date("1958-01-01"),
+    y = .24
+  ) +
+  # Plot the Data as Area ------------------------------------------------------
+  geom_area(
+    fill = "#0098DB",
+    alpha = 0.5
+  ) 
+
+cpi_viz
+  
+```
+
+
+
+## Part 2: CPI Components
+
+
+### Used Cars and Trucks 
+
+```{r}
+
+a <- ggplot(
+  cars %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+    y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  # scale_x_date(
+  #   date_breaks = "1 year",
+  #   date_labels = "'%y"
+  # ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "USED CARS/TRUCKS"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 20)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-02-01"),
+    y = 0.17,
+    label = "+21%",
+    size = 14,
+    family = "Roboto Condensed"
+  )
+  
+a
+
+```
+
+### Energy
+
+```{r}
+
+b <- ggplot(
+  energy %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "HOUSEHOLD ENERGY"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks.y = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 20)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-02-01"),
+    y = 0.17,
+    label = "+6.4%",
+    size = 14,
+    family = "Roboto Condensed"
+  )
+
+b
+
+```
+
+### Airfares
+
+```{r}
+
+d <- ggplot(
+  airfares %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "AIR FARES"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks.y = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 20)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-02-01"),
+    y = 0.17,
+    label = "+9.6%",
+    size = 14,
+    family = "Roboto Condensed"
+  )
+
+d
+
+```
+
+
+### Furniture
+
+```{r}
+
+c <- ggplot(
+  furniture %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "FURNITURE"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks.y = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 20)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-02-01"),
+    y = 0.17,
+    label = "+3.5%",
+    size = 14,
+    family = "Roboto Condensed"
+  )
+
+c
+
+```
+
+### Gasoline
+
+```{r}
+
+e <- ggplot(
+  gas %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.4, 0.5)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "GASOLINE"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks.y = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 20)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-02-01"),
+    y = 0.5,
+    label = "+49.6%",
+    size = 14,
+    family = "Roboto Condensed"
+  )
+
+e
+
+```
+
+# Combine for Inset 
+
+## Issues and Challenges  
+
+* One
+* Two
+
+### Take One
+
+```{r Combined Panel}
+
+(a / c) | (b / d) | e + 
+  plot_layout()
+
+```
+
+### Step One
+
+```{r}
+
+(a/c)|(b/d)
+
+x <- (a/c)|(b/d)
+
+
+```
+
+### Step Two
+
+
+```{r}
+
+y <- x | e
+
+```
+
+### Step Three: Assemble Viz First Attempt
+
+
+```{r}
+
+cpi_viz +
+  inset_element(
+    y, 
+    left = 0.5,
+    bottom = 0.5,
+    right = 1,
+    top = 1
+  )
+
+# ggsave(
+#   "cpi_r1.png",
+#   width = 14,
+#   height = 14 * 0.618,
+#   units = "in",
+#   dpi = 600,
+#   type = "cairo"
+# )
+
+
+```
+
+
+## Revise Ratios for Inset Figures
+
+### Used Cars and Trucks---REVISED 
+
+```{r}
+
+a_rev <- ggplot(
+  cars %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position = position_dodge(9), 
+  ) +
+  expand_limits(
+    y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "USED CARS/TRUCKS"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 13),
+    axis.text.y = element_text(size = 10)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2020-10-01"),
+    y = 0.17,
+    label = "+21%",
+    size = 5,
+    family = "Roboto Condensed"
+  )
+  
+a_rev
+
+```
+
+### Energy---REVISED
+
+```{r}
+
+b_rev <- ggplot(
+  energy %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "HOUSEHOLD ENERGY"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 13),
+    axis.text.y = element_text(size = 10)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2020-10-01"),
+    y = 0.17,
+    label = "+6.4%",
+    size = 5,
+    family = "Roboto Condensed"
+  )
+
+b_rev
+
+
+```
+
+### Airfares---REVISED
+
+```{r}
+
+d_rev <- ggplot(
+  airfares %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  # scale_x_date(
+  #   date_breaks = "1 year",
+  #   date_labels = "'%y"
+  # ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "AIR FARES"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 13),
+    axis.text.y = element_text(size = 10)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2020-10-01"),
+    y = 0.17,
+    label = "+9.6%",
+    size = 5,
+    family = "Roboto Condensed"
+  )
+
+d_rev
+
+```
+
+
+### Furniture---REVISED
+
+```{r}
+
+c_rev <- ggplot(
+  furniture %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.3, 0.25)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "FURNITURE"
+  ) +
+  theme(
+   legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 13),
+    axis.text.y = element_text(size = 10)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2020-10-01"),
+    y = 0.17,
+    label = "+3.5%",
+    size = 5,
+    family = "Roboto Condensed"
+  )
+
+c_rev
+
+```
+
+### Gasoline---REVISED
+
+```{r}
+
+e_rev <- ggplot(
+  gas %>% 
+    mutate(
+      fill = case_when(
+        pct_change > 0 & DATE < as.Date("2021-04-01") ~ "#0098DB",
+        pct_change < 0 ~ "#958E83",
+        pct_change > 0 & DATE == as.Date("2021-04-01") ~ "#0079AE" 
+      )
+    ), 
+  aes(
+    x = DATE, 
+    y = pct_change,
+    fill = fill
+    )
+  ) +
+  geom_col(
+    position=position_dodge(9), 
+  ) +
+  expand_limits(
+     y = c(-0.5, 1.1)
+  ) +
+  scale_y_continuous(
+    breaks = c(-.1, 0, .1),
+    labels = c("\u201310", "0", "10%")
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  geom_hline(
+    yintercept = 0
+  ) +
+  geom_hline(
+    yintercept = c(-.1, .1),
+    lwd = 0.09
+  ) +
+  scale_fill_identity() +
+  labs(
+    x = "",
+    y = "",
+    title = "GASOLINE"
+  ) +
+  theme(
+   legend.position = "none",
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      family = "Roboto Condensed", 
+      size = 13),
+    axis.text.y = element_text(size = 10)
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2020-10-01"),
+    y = 0.55,
+    label = "+49.6%",
+    size = 5,
+    family = "Roboto Condensed"
+  )
+
+
+e_rev
+
+```
+
+### Assemble into Inset Viz---REVISED
+
+```{r}
+
+x_rev <- (a_rev / c_rev) | (b_rev / d_rev) 
+
+y_rev <- x_rev | e_rev 
+
+# y_rev <- y_rev +
+#   plot_annotation(
+#     title = "Monthly CPI for select categories, change from previous year",
+#     theme = theme(
+#       plot.title = element_text(family = "Roboto", size = 12)
+#     )
+#   )
+
+
+cpi_viz +
+  inset_element(
+    y_rev, 
+    left = 0.4,
+    bottom = 0.4,
+    right = .9,
+    top = .9
+  )
+
+# ggsave(
+#   "cpi_r3.png",
+#   width = 9,
+#   height = 6,
+#   units = "in",
+#   dpi = 600,
+#   type = "cairo"
+# )
+
+
+```
+
+
+
+```{r}
+
+design <- "
+  125
+  345
+"
+
+cpi_inset <- a_rev + b_rev + c_rev + d_rev + e_rev + plot_layout(design = design)
+
+cpi_viz +
+  inset_element(
+    cpi_inset, 
+    left = 0.4,
+    bottom = 0.4,
+    right = .9,
+    top = .9
+  )
+
+# ggsave(
+#   "cpi_r12.png",
+#   width = 10,
+#   height = 7,
+#   units = "in",
+#   dpi = 600,
+#   type = "cairo"
+# )
+
+```
+
