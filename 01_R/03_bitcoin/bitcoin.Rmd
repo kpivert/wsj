@@ -1,0 +1,654 @@
+---
+title: 'WSJ: bitcoin'
+author: "Kurtis Pivert"
+date: "5/10/2021"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        highlight: tango
+        code_folding: show
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+
+```{r Load Packages, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(ggtext)
+require(gridExtra)
+require(gridtext)
+require(ggrepel)
+require(grid)
+require(tidyquant)
+require(tidyverse)
+
+```
+
+
+```{r cache=TRUE}
+
+bc <- tq_get("BTC-USD", get = "stock.prices", from = "2021-01-01", to = "2021-05-23")
+
+```
+
+
+```{r}
+
+ggplot(
+  bc,
+  aes(
+    x = date,
+    y = adjusted
+  )
+) +
+  geom_line(
+    color = "#5CA44E"
+  ) +
+  theme_tufte(
+    base_family = "Lato"
+  ) +
+  scale_y_continuous(
+    breaks = seq(25000, 70000, 5000),
+    # labels = scales::dollar
+    labels = c(
+      scales::number(
+        # as.character(
+          seq(25000, 65000, 5000), 
+          big.mark = ","
+          # )
+        ),
+      "$70,000"
+    )
+  ) +
+  expand_limits(
+    y = c(25000, 79000),
+    x = as.Date("2020-12-25") 
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source: CoinDesk",
+    title = "The Musk Effect",
+    subtitle = "Bitcoin prices have swung in reponse to Elon Musk's tweets and statements.<br><br>**Bitcoin**"
+  ) +
+  theme(
+    plot.caption = element_text(hjust = 0),
+    plot.title = element_text(family = "Lato Black", size = 12),
+    plot.subtitle = element_markdown(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.75, 
+      margin = margin(l = 20, r = -30),
+      family = "Roboto Condensed",
+      hjust = 1),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    )
+    # axis.title.y = element_text(
+    #   vjust = -10,
+    #   family = "Roboto Bold",
+    #   angle = 0
+    # )
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-01-29")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-01-15"),
+    y = 74000,
+    label = "Musk adds #bitcoin\nto his Twitter bio.",
+    family = "Lato",
+    hjust = 0, 
+    size = 4,
+    lineheight = 0.8
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-01-29"),
+      y = 34316,
+      xend = as.Date("2021-01-29"),
+      yend = 71000
+    ),
+    size = .3
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-02-08")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-03-01"),
+    y = 74000,
+    label = "Tesla says it bought\n$1.5 billion in bitcoin.",
+    family = "Lato",
+    hjust = 0,
+    size = 4,
+    lineheight = 0.8
+    ) +
+  geom_path(
+    data = tibble(
+      date = c(
+        as.Date("2021-03-15"), as.Date("2021-03-15"), 
+        as.Date("2021-02-08"), as.Date("2021-02-08")
+      ),
+      adjusted = c(71000, 67000, 67000, 46196)
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    ),
+    size = .3
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-05-13")
+    ),
+    aes( 
+      x = date,
+      y = adjusted
+      )
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-05-13"),
+      y = 49716,
+      xend = as.Date("2021-05-13"),
+      yend = 71000
+    ),
+    size = .3
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-05-15"),
+    y = 74000,
+    label = "Tesla says it won't accept\nbitcoin for payment.",
+    family = "Lato",
+    hjust = 1,
+    size = 4,
+    lineheight = 0.8
+  ) +
+  scale_x_date(
+    breaks = c(as.Date("2021-01-01"), as.Date("2021-02-01"), 
+               as.Date("2021-03-01"), as.Date("2021-04-01"),
+               as.Date("2021-05-01")),
+    labels = c("2021", "", "", "", "May\nAs of May 23, 12:43 p.m. EDT")
+  )
+
+
+
+# ggsave(
+#   filename = here::here("02_figs", "bc.png"),
+#   width = 8,
+#   height = 8 * 0.628,
+#   units = "in",
+#   dpi = 600,
+#   type = "cairo"
+# )
+
+```
+
+## Mukta Take 1
+
+```{r}
+
+ggplot(
+  bc,
+  aes(
+    x = date,
+    y = adjusted
+  )
+) +
+  geom_line(
+    color = "#5CA44E"
+  ) +
+  theme_tufte(
+    base_family = "Mukta"
+  ) +
+  scale_y_continuous(
+    breaks = seq(25000, 70000, 5000),
+    # labels = scales::dollar
+    labels = c(
+      scales::number(
+        # as.character(
+        seq(25000, 65000, 5000), 
+        big.mark = ","
+        # )
+      ),
+      "$70,000"
+    )
+  ) +
+  expand_limits(
+    y = c(25000, 79000),
+    x = as.Date("2020-12-25") 
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source: CoinDesk",
+    title = "The Musk Effect",
+    subtitle = "Bitcoin prices have swung in reponse to Elon Musk's tweets and statements.<br><br>**Bitcoin**"
+  ) +
+  theme(
+    plot.caption = element_text(hjust = 0),
+    plot.title = element_text(family = "Mukta Bold", size = 12),
+    plot.subtitle = element_markdown(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.45, 
+      margin = margin(l = 20, r = -30),
+      family = "Roboto Condensed",
+      hjust = 1),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    ),
+    axis.ticks.x = element_blank()
+    # axis.title.y = element_text(
+    #   vjust = -10,
+    #   family = "Roboto Bold",
+    #   angle = 0
+    # )
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-01-29")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-01-15"),
+    y = 74000,
+    label = "Musk adds #bitcoin\nto his Twitter bio.",
+    family = "Mukta",
+    hjust = 0, 
+    size = 4,
+    lineheight = 0.8
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-01-29"),
+      y = 34316,
+      xend = as.Date("2021-01-29"),
+      yend = 71000
+    ),
+    size = .3
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-02-08")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-03-01"),
+    y = 74000,
+    label = "Tesla says it bought\n$1.5 billion in bitcoin.",
+    family = "Mukta",
+    hjust = 0,
+    size = 4,
+    lineheight = 0.8
+  ) +
+  geom_path(
+    data = tibble(
+      date = c(
+        as.Date("2021-03-15"), as.Date("2021-03-15"), 
+        as.Date("2021-02-08"), as.Date("2021-02-08")
+      ),
+      adjusted = c(71000, 67000, 67000, 46196)
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    ),
+    size = .3
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-05-13")
+    ),
+    aes( 
+      x = date,
+      y = adjusted
+    )
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-05-13"),
+      y = 49716,
+      xend = as.Date("2021-05-13"),
+      yend = 71000
+    ),
+    size = .3
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-05-15"),
+    y = 74000,
+    label = "Tesla says it won't accept\nbitcoin for payment.",
+    family = "Mukta",
+    hjust = 1,
+    size = 4,
+    lineheight = 0.8
+  ) +
+  scale_x_date(
+    breaks = c(as.Date("2021-01-01"), as.Date("2021-02-01"), 
+               as.Date("2021-03-01"), as.Date("2021-04-01"),
+               as.Date("2021-05-01")),
+    labels = c("2021", "", "", "", "May\nAs of May 23, 12:43 p.m. EDT")
+  ) +
+  # Axis Ticks
+  geom_segment(
+    aes(
+      x = as.Date("2021-01-01"),
+      y = 25000,
+      xend = as.Date("2021-01-01"),
+      yend = 24000
+    ),
+    size = .3
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-02-01"),
+      y = 25000,
+      xend = as.Date("2021-02-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) +  geom_segment(
+    aes(
+      x = as.Date("2021-03-01"),
+      y = 25000,
+      xend = as.Date("2021-03-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) +  geom_segment(
+    aes(
+      x = as.Date("2021-04-01"),
+      y = 25000,
+      xend = as.Date("2021-04-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) +  geom_segment(
+    aes(
+      x = as.Date("2021-05-01"),
+      y = 25000,
+      xend = as.Date("2021-05-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) 
+
+
+
+
+ggsave(
+  filename = here::here("02_figs", "bc.png"),
+  width = 5.75,
+  height = 4.31,
+  units = "in",
+  dpi = 300,
+  type = "cairo"
+)
+
+
+
+
+```
+
+
+## Mukta Take 2
+
+```{r}
+
+ggplot(
+  bc,
+  aes(
+    x = date,
+    y = adjusted
+  )
+) +
+  geom_line(
+    color = "#5CA44E"
+  ) +
+  theme_tufte(
+    base_family = "Mukta"
+  ) +
+  scale_y_continuous(
+    breaks = seq(25000, 70000, 5000),
+    # labels = scales::dollar
+    labels = c(
+      scales::number(
+        # as.character(
+        seq(25000, 65000, 5000), 
+        big.mark = ","
+        # )
+      ),
+      "$70,000"
+    )
+  ) +
+  expand_limits(
+    y = c(25000, 79000),
+    x = as.Date("2020-12-31") 
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source: CoinDesk",
+    title = "The Musk Effect",
+    subtitle = "Bitcoin prices have swung in reponse to Elon Musk's tweets and statements.<br><br>**Bitcoin**"
+  ) +
+  theme(
+    plot.caption = element_text(hjust = 0),
+    plot.title = element_text(family = "Mukta Bold", size = 12),
+    plot.subtitle = element_markdown(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.45, 
+      margin = margin(l = 20, r = -30),
+      family = "Roboto Condensed",
+      hjust = 1),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    ),
+    axis.ticks.x = element_blank()
+    # axis.title.y = element_text(
+    #   vjust = -10,
+    #   family = "Roboto Bold",
+    #   angle = 0
+    # )
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-01-29")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-01-15"),
+    y = 74000,
+    label = "Musk adds #bitcoin\nto his Twitter bio.",
+    family = "Mukta",
+    hjust = 0, 
+    size = 4,
+    lineheight = 0.8
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-01-29"),
+      y = 34316,
+      xend = as.Date("2021-01-29"),
+      yend = 71000
+    ),
+    size = .3
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-02-08")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-03-01"),
+    y = 74000,
+    label = "Tesla says it bought\n$1.5 billion in bitcoin.",
+    family = "Mukta",
+    hjust = 0,
+    size = 4,
+    lineheight = 0.8
+  ) +
+  geom_path(
+    data = tibble(
+      date = c(
+        as.Date("2021-03-15"), as.Date("2021-03-15"), 
+        as.Date("2021-02-08"), as.Date("2021-02-08")
+      ),
+      adjusted = c(71000, 67000, 67000, 46196)
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    ),
+    size = .3
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-05-13")
+    ),
+    aes( 
+      x = date,
+      y = adjusted
+    )
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-05-13"),
+      y = 49716,
+      xend = as.Date("2021-05-13"),
+      yend = 71000
+    ),
+    size = .3
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-05-15"),
+    y = 74000,
+    label = "Tesla says it won't accept\nbitcoin for payment.",
+    family = "Mukta",
+    hjust = 1,
+    size = 4,
+    lineheight = 0.8
+  ) +
+  scale_x_date(
+    breaks = c(as.Date("2021-01-01"), as.Date("2021-02-01"), 
+               as.Date("2021-03-01"), as.Date("2021-04-01"),
+               as.Date("2021-05-01")),
+    labels = c("2021", "", "", "", "May\nAs of May 23, 12:43 p.m. EDT")
+  ) +
+  # Axis Ticks
+  geom_segment(
+    aes(
+      x = as.Date("2021-01-01"),
+      y = 25000,
+      xend = as.Date("2021-01-01"),
+      yend = 24000
+    ),
+    size = .3
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-02-01"),
+      y = 25000,
+      xend = as.Date("2021-02-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) +  geom_segment(
+    aes(
+      x = as.Date("2021-03-01"),
+      y = 25000,
+      xend = as.Date("2021-03-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) +  geom_segment(
+    aes(
+      x = as.Date("2021-04-01"),
+      y = 25000,
+      xend = as.Date("2021-04-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) +  geom_segment(
+    aes(
+      x = as.Date("2021-05-01"),
+      y = 25000,
+      xend = as.Date("2021-05-01"),
+      yend = 24500
+    ),
+    size = .3
+  ) 
+
+
+# ggsave(
+#   filename = here::here("02_figs", "bc.jpeg"),
+#   width = 8,
+#   height = 6,
+#   units = "in",
+#   dpi = 300
+# )
+
+
+```
+
