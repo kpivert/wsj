@@ -420,15 +420,15 @@ ggplot(
 
 
 
-
-ggsave(
-  filename = here::here("02_figs", "bc.png"),
-  width = 5.75,
-  height = 4.31,
-  units = "in",
-  dpi = 300,
-  type = "cairo"
-)
+# 
+# ggsave(
+#   filename = here::here("02_figs", "bc.png"),
+#   width = 5.75,
+#   height = 4.31,
+#   units = "in",
+#   dpi = 300,
+#   type = "cairo"
+# )
 
 
 
@@ -643,6 +643,189 @@ ggplot(
 
 # ggsave(
 #   filename = here::here("02_figs", "bc.jpeg"),
+#   width = 8,
+#   height = 6,
+#   units = "in",
+#   dpi = 300
+# )
+
+
+```
+
+
+## Print Version With Area Chart
+
+```{r}
+
+ggplot(
+  bc,
+  aes(
+    x = date,
+    y = adjusted
+  )
+) +
+  geom_line(
+    color = "#5CA44E",
+    lwd = 1.2
+  ) +
+  theme_tufte(
+    base_family = "Mukta"
+  ) +
+  geom_area(
+    fill = "#5Ca44E",
+    alpha = 0.5
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 60000, 10000),
+    # labels = scales::dollar
+    labels = c(
+      scales::number(
+        # as.character(
+        seq(0, 50000, 10000), 
+        big.mark = ","
+        # )
+      ),
+      "$60,000"
+    )
+  ) +
+  expand_limits(
+    x = as.Date("2020-12-31") 
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Source: CoinDesk",
+    title = "Bitcoin prices have swung in reponse to tweets\nand announcements from Tesla Inc. Chief Executive\nElon Musk, much to chagrin of investors."
+  ) +
+  theme(
+    plot.caption = element_text(hjust = 0, family = "Mukta Light"),
+    plot.title = element_text(family = "Mukta Light", size = 12),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.45, 
+      margin = margin(l = 20, r = -30),
+      family = "Roboto Condensed",
+      hjust = 1),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    ) 
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-01-29")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  geom_label(
+    x = as.Date("2021-01-15"),
+    y = 22000,
+    label = "Musk adds\n#bitcoin to his\nTwitter bio",
+    family = "Mukta",
+    hjust = 0, 
+    size = 4,
+    lineheight = 0.8,
+    fill = "#B3D3AD",
+    label.size = NA
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-01-29"),
+      y = 34316,
+      xend = as.Date("2021-01-29"),
+      yend = 26000
+    ),
+    size = .3,
+    linetype = "dotted"
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-02-08")
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    )
+  ) +
+  geom_label(
+    x = as.Date("2021-02-12"),
+    y = 22000,
+    label = "Tesla says it\nbought $1.5\nbillion in bitcoin",
+    family = "Mukta",
+    hjust = 0,
+    size = 4,
+    lineheight = 0.8,
+    fill = "#B3D3AD",
+    label.size = NA
+  ) +
+  geom_path(
+    data = tibble(
+      date = c(
+        as.Date("2021-02-15"), as.Date("2021-02-15"), 
+        as.Date("2021-02-08")
+      ),
+      adjusted = c(26000, 46196, 46196)
+    ),
+    aes(
+      x = date,
+      y = adjusted
+    ),
+    size = .3,
+    linetype = "dotted"
+  ) +
+  geom_point(
+    data = filter(
+      bc, 
+      date == as.Date("2021-05-13")
+    ),
+    aes( 
+      x = date,
+      y = adjusted
+    )
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-05-13"),
+      y = 49716,
+      xend = as.Date("2021-05-13"),
+      yend = 26000
+    ),
+    size = .3,
+    linetype = "dotted"
+  ) +
+  geom_label(
+    x = as.Date("2021-04-20"),
+    y = 22000,
+    label = "Tesla says it won't\naccept bitcoin for\npayments anymore",
+    family = "Mukta",
+    hjust = 0,
+    size = 4,
+    lineheight = 0.8,
+    fill = "#B3D3AD",
+    label.size = NA
+  ) +
+  scale_x_date(
+    breaks = c(as.Date("2021-01-01"), as.Date("2021-02-01"), 
+               as.Date("2021-03-01"), as.Date("2021-04-01"),
+               as.Date("2021-05-01")),
+    labels = c("Jan. 2021", "Feb.", "March", "April", "May")
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2021-01-30"),
+    y = 55000,
+    label = "bitcoin price",
+    family = "Mukta Bold"
+  )
+
+
+# ggsave(
+#   filename = here::here("02_figs", "bc_print.jpeg"),
 #   width = 8,
 #   height = 6,
 #   units = "in",
