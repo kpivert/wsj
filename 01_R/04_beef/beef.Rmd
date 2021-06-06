@@ -1,0 +1,540 @@
+---
+title: 'WSJ: beef'
+author: "Kurtis Pivert"
+date: "5/10/2021"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        highlight: tango
+        code_folding: show
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+
+```{r Load Packages, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(ggtext)
+require(gridExtra)
+require(gridtext)
+require(grid)
+require(tidyverse)
+
+```
+
+## Beef!
+
+Data came from the [USDA Datamart](https://mpr.datamart.ams.usda.gov/menu.htm).
+
+
+```{r cache=TRUE}
+
+bf <- read_csv(
+  here::here(
+    "00_data/03_beef", 
+    "Datamart-Export_LM_XB403-Current Cutout Values_20210603_115853.csv"
+    )
+  )
+
+bf_cx <- read_csv(
+  here::here(
+    "00_data/03_beef", 
+    "Datamart-Export_LM_XB403-Change From Prior Day_20210603_115853.csv"
+    )
+)
+
+
+```
+
+## Clean Data
+
+```{r}
+
+bf <- bf %>% 
+  pivot_longer(
+    names_to = "Cut",
+    values_to = "Price",
+    names_pattern = "([A-Za-z]+)",
+    -`Report Date`
+  ) %>% 
+  mutate(
+    date = lubridate::mdy(`Report Date`)
+  ) %>% 
+  arrange(date)
+
+bf_cx <- bf_cx %>% 
+  pivot_longer(
+    names_to = "Cut",
+    values_to = "Price_Change",
+    names_pattern = "([A-Za-z]+)",
+    -`Report Date`
+  ) %>% 
+  mutate(
+    date = lubridate::mdy(`Report Date`)
+  ) %>% 
+  arrange(date)
+
+bf <- bf %>% 
+  left_join(
+    bf_cx, 
+    by = c("Cut", "date")
+    ) %>% 
+  select(
+    `Report Date` = `Report Date.x`, 
+    date, 
+    Cut, 
+    Price, 
+    Price_Change
+    ) %>% 
+  slice(-c(1,2))
+
+```
+
+
+## Viz
+
+
+```{r}
+
+# str_glue to the rescue!!
+x <- seq(270, 330, 10)
+
+ggplot(
+  bf, 
+  aes(
+    x = `Report Date`,
+    y = Price, 
+    group = Cut
+    )
+  ) +
+  geom_line(
+    aes(
+    color = Cut
+    )
+  ) +
+  geom_point(
+    data = bf %>% 
+      group_by(Cut) %>% 
+      slice(n()),
+    aes(
+      x = `Report Date`, 
+      y = Price,
+      color = Cut
+    )
+  ) +
+  scale_color_manual(
+    values = c("red", "pink")
+  ) +
+  scale_x_discrete(
+    labels = c(
+      "May 4",
+      rep("", 19),
+      "June",
+      ""
+    )
+  ) +
+  scale_y_continuous(
+    breaks = seq(270, 340, 10),
+    labels = c(
+      # as.character(seq(270, 330, 10)),
+      str_glue("  {x}"),
+      "$340 per hundred pounds"
+    )
+  ) +
+  # theme_minimal(
+  #   base_family = "Mukta"
+  # ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "*From previous day\nSource: USDA",
+    title = "U.S. wholesale beef\nprices by cut"
+  ) +
+  theme(
+    text = element_text(family = "Mukta"),
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    plot.caption = element_text(hjust = 0, lineheight = .9, family = "Roboto Condensed"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(family = "Mukta Bold", size = 12),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.45, 
+      margin = margin(l = 20, r = -100),
+      family = "Roboto Condensed",
+      hjust = 0),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    ),
+    legend.position = "none"
+    # axis.ticks.x = element_blank() #,
+    # axis.line.x.bottom = element_line(size = 1)
+  ) +
+  expand_limits(
+    y = 270,
+    x = -1
+    )
+
+
+
+# ggsave(
+#   filename = here::here("02_figs", "beef.jpeg"),
+#   width = 3,
+#   height = 4.5,
+#   units = "in",
+#   dpi = 300
+# )
+
+
+
+
+```
+
+
+# Using gridextra
+
+
+
+```{r}
+
+# Using hrbrmstr example 
+
+# 1. Obtain Values from Last Observation
+
+last_vals_name <- bf %>% 
+  group_by(Cut) %>% 
+  slice(n()) %>% 
+  ungroup() %>% 
+  mutate(
+    lab_text = str_glue(
+      "{lubridate::month(date, label = TRUE, abbr = FALSE)} {lubridate::day(date)}
+      {Cut}
+      {scales::dollar(Price)}
+      up {scales::dollar(Price_Change)}*")
+    ) %>% 
+  pull(lab_text)
+
+last_vals <- bf %>% 
+  group_by(Cut) %>% 
+  slice(n()) %>% 
+  ungroup() %>% 
+  mutate(
+    text = str_glue(
+      "{lubridate::month(date, label = TRUE, abbr = FALSE)} {lubridate::day(date)}
+      {Cut}
+      {scales::dollar(Price)}
+      up {scales::dollar(Price_Change)}*")
+    ) %>% 
+  pull(Price) %>% 
+  set_names(last_vals_name)
+
+
+# 2. Obtain Last Date 
+
+last_date <- bf %>% 
+  slice(n()) %>% 
+  pull(`Report Date`)
+
+# 3. Create ggplot object 
+
+gg <- ggplot(
+  bf, 
+  aes(
+    x = `Report Date`,
+    y = Price, 
+    group = Cut
+    )
+  ) +
+  geom_line(
+    aes(
+    color = Cut
+    )
+  ) +
+  geom_point(
+    data = bf %>% 
+      group_by(Cut) %>% 
+      slice(n()),
+    aes(
+      x = `Report Date`, 
+      y = Price,
+      color = Cut
+    )
+  ) +
+  scale_color_manual(
+    values = c("red", "pink")
+  ) +
+  scale_x_discrete(
+    labels = c(
+      "May 4",
+      rep("", 19),
+      "June",
+      ""
+    )
+  ) +
+  scale_y_continuous(
+    breaks = seq(270, 340, 10),
+    labels = c(
+      str_glue("  {x}"),
+      "$340 per hundred pounds"
+    )
+  ) +
+  # theme_minimal(
+  #   base_family = "Mukta"
+  # ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "*From previous day\nSource: USDA",
+    title = "U.S. wholesale beef\nprices by cut"
+  ) +
+  theme(
+    text = element_text(family = "Mukta"),
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    plot.caption = element_text(hjust = 0, lineheight = .9, family = "Roboto Condensed"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(family = "Mukta Bold", size = 12),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.45, 
+      margin = margin(l = 20, r = -100),
+      family = "Roboto Condensed",
+      hjust = 0),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    ),
+    legend.position = "none"
+    # axis.ticks.x = element_blank() #,
+    # axis.line.x.bottom = element_line(size = 1)
+  ) +
+  expand_limits(
+    y = 270,
+    x = c(-1, 23)
+    )
+
+# 5. Check Base Plot
+
+gg  
+
+# 6. Manually Annotate Lines 
+
+for (i in 1:length(last_vals)) {
+  gg <- gg +
+    annotation_custom(
+      grob = textGrob(
+        names(last_vals)[i],
+        hjust = 0,
+        gp = gpar(
+          fontsize = 8
+        )
+      ),
+  xmin = 20,
+  xmax = 20,
+  ymin = last_vals[i],
+  ymax = last_vals[i]
+    )
+}
+
+# 7. Check Plot 
+
+gg
+
+# 8. Create ggplot build 
+
+gb <- ggplot_build(gg)
+
+# 9. Create ggplot gtable 
+
+gt <- ggplot_gtable(gb)
+
+# 10. Turn Off Panel Clipping (?)
+
+gt$layout$clip[gt$layout$name == "panel"] <- "off"
+
+# 11. Output Finished Plot 
+
+grid.draw(gt)
+
+```
+
+
+## Extension Using gridtext 
+
+```{r}
+
+text_gt <- c(
+  "<b>June 2</b>", 
+  "Choice<br>$340.16<br><b>&ensp;up $5.60</b>*", 
+  "Select<br>$311.88<br><b>&ensp;up $5.43</b>*"
+  ) 
+
+# Use with gridtext 
+
+# 1. Obtain Values from Last Observation
+
+# last_vals_gt <- bf %>% 
+#   group_by(Cut) %>%
+#   summarize(
+#     across(matches("Price"), last)
+#     ) %>% 
+#   pull(Price)
+
+last_vals_gt <- c(335, 325, 306)
+
+
+# 2. Create ggplot object 
+
+gg_gt <- ggplot(
+  bf, 
+  aes(
+    x = `Report Date`,
+    y = Price, 
+    group = Cut
+    )
+  ) +
+  geom_line(
+    aes(
+    color = Cut
+    ),
+    lwd = 1.2
+  ) +
+  geom_point(
+    data = bf %>% 
+      group_by(Cut) %>% 
+      slice(n()),
+    aes(
+      x = `Report Date`, 
+      y = Price,
+      color = Cut
+    ), 
+    size = 5
+  ) +
+  scale_color_manual(
+    values = c("red", "pink")
+  ) +
+  scale_x_discrete(
+    labels = c(
+      "May 4",
+      rep("", 19),
+      "June",
+      ""
+    )
+  ) +
+  scale_y_continuous(
+    breaks = seq(270, 340, 10),
+    labels = c(
+      str_glue("  {x}"),
+      "$340 per hundred pounds"
+    )
+  ) +
+  # theme_minimal(
+  #   base_family = "Mukta"
+  # ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "*From previous day\nSource: USDA",
+    title = "U.S. wholesale beef\nprices by cut"
+  ) +
+  theme(
+    text = element_text(family = "Mukta"),
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    plot.caption = element_text(hjust = 0, lineheight = .9, family = "Roboto Condensed"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(family = "Mukta Bold", size = 12),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_text(
+      vjust = - 0.45, 
+      margin = margin(l = 20, r = -100),
+      family = "Roboto Condensed",
+      hjust = 0),
+    panel.grid.major.y = element_line(color = "grey", size = 0.1),
+    axis.text = element_text(
+      family = "Roboto Condensed"
+    ),
+    legend.position = "none"
+    # axis.ticks.x = element_blank() #,
+    # axis.line.x.bottom = element_line(size = 1)
+  ) +
+  expand_limits(
+    y = 270,
+    x = c(-3, 26)
+    )
+
+# 4. Check Base Plot
+
+gg_gt  
+
+# 5. Manually Annotate Lines 
+
+fnt_sz <- c(15, 11, 11)
+
+for (i in 1:length(last_vals_gt)) {
+  
+  gg_gt <- gg_gt +
+    annotation_custom(
+      grob = richtext_grob(
+        text_gt[i],
+        hjust = 0,
+        gp = gpar(
+          fontsize = fnt_sz[i],
+          col = "#000000",
+          fontfamily = "Mukta"
+        ),
+        halign = 1
+      ),
+      xmin = 20.5,
+      xmax = 20.5,
+      ymin = last_vals_gt[i],
+      ymax = last_vals_gt[i]
+    )
+}
+
+# 6. Check Plot 
+
+gg_gt
+
+# 7. Create ggplot build 
+
+gb_gt <- ggplot_build(gg_gt)
+
+# 8. Create ggplot gtable 
+
+gt_gt <- ggplot_gtable(gb_gt)
+
+# 9. Turn Off Panel Clipping (?)
+
+gt_gt$layout$clip[gt_gt$layout$name == "panel"] <- "off"
+
+# 10. Output Finished Plot 
+
+grid.draw(gt_gt)
+
+ggsave(
+  filename = here::here("02_figs", "beef.jpeg"),
+  width = 4,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+
+
+```
+
