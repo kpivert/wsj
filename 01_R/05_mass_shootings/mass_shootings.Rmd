@@ -1,0 +1,494 @@
+---
+title: "mass shootings"
+author: "Kurtis Pivert"
+date: "5/19/2021"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        code_folding: show
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(
+  # echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+```{r Load Packages, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(ggtext)
+require(gridExtra)
+require(gridtext)
+require(grid)
+require(readxl)
+require(patchwork)
+require(tsibble)
+require(tidyverse)
+
+```
+
+```{r}
+
+df <- read_excel(
+  here::here("00_data", "04_mass_shooting/TVP-Mass-Shooter-Database-V3.xlsx"),
+  sheet = "Full Database",
+  skip = 1
+  ) %>% 
+  janitor::clean_names() 
+
+df <- df %>% 
+  filter(full_date >= as.Date("2000-01-01")) 
+
+# https://www.motherjones.com/politics/2012/12/mass-shootings-mother-jones-full-data/
+
+mj_df <- read_csv(
+  here::here(
+    "00_data", 
+    "04_mass_shooting/Mother Jones - Mass Shootings Database, 1982 - 2021 - Sheet1.csv")
+  ) %>% 
+  janitor::clean_names() %>% 
+  arrange(n():1) %>% 
+  mutate(
+    full_date = lubridate::mdy(date)
+  ) %>% 
+  filter(full_date >= as.Date("2021-01-01"))
+
+
+```
+
+
+```{r}
+
+df <- df %>%
+  mutate(
+    full_date = lubridate::as_date(full_date)
+  ) %>% 
+  select(
+    full_date,
+    number_killed
+  )
+
+mj_df <- mj_df %>% 
+  select(
+    full_date,
+    number_killed = fatalities
+  ) 
+
+df <- bind_rows(df, mj_df)
+
+```
+
+## Fix Duplicate 
+
+```{r}
+# Two Dates with Multiple Mass Shootings 
+# Because there were two mass shooters, hence two records in the Violence Project
+# Database
+
+df %>% 
+  count(full_date) %>% 
+  filter(n>1) %>% 
+  pull(full_date)
+
+mult_shoot <- c("2015-12-02", "2019-12-10")
+
+df %>% 
+  filter(full_date %in% as.Date(mult_shoot))
+
+df <- df %>% 
+  distinct()
+
+# Add January 1, 2000 for Completeness in as_tsibble
+
+df <- df %>% 
+  bind_rows(
+    tibble(
+      full_date = as.Date("2000-01-01"),
+      number_killed = NA_real_
+    )
+  ) %>% 
+  arrange(full_date)
+
+```
+
+
+## Mass Shootings Upper Panel 
+
+```{r}
+
+x <- 0
+
+lab_1 <- "The U.S. has had five mass shootings
+so far this year, more than in the first
+half of any other year since 2010, 
+except for 2018."
+
+lab_2 <- "Mass shootings each year,
+by number of fatalities*"
+
+a <- ggplot(
+  filter(
+    df, 
+    full_date >= as.Date("2010-01-01")
+    ),
+  aes(
+    x = full_date,
+    y = number_killed
+    )
+  ) +
+  geom_col(
+    color = "#B12E6E"
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "'%y"
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 60, 10),
+    position = "right", 
+    labels = c(
+      str_glue("  {x}"),
+      as.character(seq(10, 60, 10))
+      )
+  ) +
+  theme_tufte(
+    base_family = "Roboto Condensed"
+  ) +
+  theme(
+    axis.ticks.y.right = element_blank(),
+    axis.text.y.right = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = -35, r = 20),
+      family = "Roboto Condensed"),
+  ) +
+  labs(
+    x = "",
+    y = ""
+  ) +
+  expand_limits(
+    y = 65,
+    x = as.Date("2021-08-01")
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2010-01-01"), 
+      y = 0,
+      xend = as.Date("2021-10-01"),
+      yend = 0
+        ),
+    lwd = 0.1
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2010-01-01"), 
+      y = 10,
+      xend = as.Date("2021-10-01"),
+      yend = 10
+        ),
+    lwd = 0.05
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2010-01-01"), 
+      y = 20,
+      xend = as.Date("2021-10-01"),
+      yend = 20
+        ),
+    lwd = 0.05
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2010-01-01"), 
+      y = 30,
+      xend = as.Date("2021-10-01"),
+      yend = 30
+        ),
+    lwd = 0.05
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2016-06-12"), 
+      y = 40,
+      xend = as.Date("2021-10-01"),
+      yend = 40
+        ),
+    lwd = 0.05
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2016-06-12"), 
+      y = 50,
+      xend = as.Date("2021-10-01"),
+      yend = 50
+        ),
+    lwd = 0.05
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2017-10-01"), 
+      y = 60,
+      xend = as.Date("2021-10-01"),
+      yend = 60
+        ),
+    lwd = 0.05
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2010-03-01"),
+    y = 55, 
+    label = str_glue("{lab_1}"), 
+    hjust = 0,
+    family = "Mukta",
+    size = 6,
+    lineheight = 0.8
+  ) +
+  annotate(
+    geom = "text",
+    x = as.Date("2010-03-01"),
+    y = 40, 
+    label = str_glue("{lab_2}"), 
+    hjust = 0,
+    family = "Mukta ExtraBold",
+    size = 4,
+    lineheight = 0.8
+  )
+  
+a
+  
+
+```
+
+
+```{r}
+# Step 1: Fill In All Dates
+
+df_days <- df %>% 
+  as_tsibble() %>% 
+  fill_gaps()
+
+# Step 2: Convert Back to Tibble
+
+df_days <- df_days %>% 
+  as_tibble()
+
+# Step 3: Count Days Between Mass Shootings
+
+df_days <- df_days %>% 
+  mutate(
+    mass_shooting = case_when(
+      is.na(number_killed) ~ "No",
+      TRUE ~ "Yes"
+    )
+  )
+
+# Step 4: Classify Fill by Number of Days Between Mass Shootings
+
+df_days <- df_days %>% 
+  mutate(
+    fill_col = df_days %>% 
+      pull(mass_shooting) %>% 
+      rle() %>% 
+      pluck("lengths") %>% 
+      map(~rep_len(.x, length.out = .x)) %>% 
+      unlist()
+    ) %>% 
+  mutate(
+    fill_col_val = case_when(
+      # fill_col == 1 ~ "#ffffff",
+      fill_col == 1 ~ NA_character_,
+      fill_col >= 2 & fill_col <= 90 ~ "#BA2979",
+      fill_col >= 91 & fill_col <= 180 ~ "#C8A2C0",
+      fill_col >= 181 ~ "#CED5E2"
+      )
+    ) %>% 
+  mutate(
+    fill_col_val = case_when(
+      # full_date >= as.Date("2000-01-01") & full_date <= as.Date("2000-03-19") ~ "#ffffff",
+      full_date >= as.Date("2000-01-01") & full_date <= as.Date("2000-03-19") ~ NA_character_,
+      TRUE ~ fill_col_val
+    )
+  )
+        
+
+# rle(df$mass_shooting) %>% 
+#   pluck("lengths") %>% 
+#   map(x, ~rep_len(.x, length.out = .x)) %>% 
+#   unlist()
+
+```
+
+
+
+```{r}
+
+b <- ggplot(
+  df_days, 
+  aes(
+    x = full_date,
+    fill = fill_col_val
+  )
+) +
+  geom_histogram(binwidth = 1) +
+  scale_fill_identity(
+    # breaks = c(
+    # #   "90 days\nor less", "Between 91\nand 180 days", "More than\n180 days"
+    # ),
+    labels = c(
+      "90 days\nor less", "Between 91\nand 180 days", "More than\n180 days", ""
+    ),
+    guide = "legend",
+    name = "Days between mass shootings"
+    
+  ) + 
+  scale_x_date(
+    date_labels = "'%y"
+  ) +
+  theme_tufte(
+    base_family = "Roboto Condensed"
+  ) +
+  labs(
+    x = "",
+    y = "",
+    caption = "Mass shooting is defined as an incident in which four or more victims are killed with firearms\u2013not including the offender(s)\u2013and at least some of\nthe homicides occurred in a public location, or locations in proximity, with the killings not attributable to any other underlying criminal activity or\ncommonplace circumstance.\nSource: The Violence Project"
+  ) + 
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_text(
+      family = "Mukta Bold",
+      hjust = 0, 
+      size = 16
+    ),
+    legend.position = "top",
+    legend.key.height = unit(.4, "inches"),
+    legend.text = element_text(
+      family = "Mukta",
+      size = 12
+    ),
+    plot.caption = element_text(
+      family = "Roboto Condensed",
+      hjust = 0,
+      size = 8
+    )
+  ) +
+  geom_path(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = c(
+        as.Date("2020-03-15"), as.Date("2020-03-15"), 
+        as.Date("2021-03-16"), as.Date("2021-03-16"),
+        as.Date("2020-03-15")
+      ),
+      y = c(0, 1, 1, 0, 0),
+      fill_col_val = rep("black", 5)
+    ),
+    aes(
+      x = x, 
+      y = y
+    )
+  ) +
+  geom_path(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = c(
+        as.Date("2021-03-16"), as.Date("2021-03-16"), 
+        as.Date("2021-05-26"), as.Date("2021-05-26"),
+        as.Date("2021-03-16")
+      ),
+      y = c(0, 1, 1, 0, 0),
+      fill_col_val = rep("black", 5)
+    ),
+    aes(
+      x = x, 
+      y = y
+    )
+  ) +
+  ggrepel::geom_text_repel(
+    inherit.aes = FALSE,
+    data = tibble(
+      full_date = as.Date("2021-01-01"),
+      y = 1.7, 
+      # fill_col_val = "#ffffff",
+      label = "366 days without\nmass shootings"
+    ),
+    aes(
+      x = full_date,
+      y = y, 
+      label = label
+    ),
+    hjust = 1, 
+    family = "Roboto Condensed Italic", 
+    lineheight = 0.7
+  ) +
+  ggrepel::geom_text_repel(
+    inherit.aes = FALSE,
+    data = tibble(
+      full_date = as.Date("2020-11-01"),
+      y = -.7, 
+      # fill_col_val = "#ffffff",
+      label = "Five mass shootings since mid-March 2021"
+    ),
+    aes(
+      x = full_date,
+      y = y, 
+      label = label
+    ),
+    hjust = 1, 
+    family = "Roboto Condensed Italic", 
+    lineheight = 0.7
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2020-06-01"),
+      xend = as.Date("2020-06-01"),
+      y = 1, 
+      yend = 1.2
+    )
+  ) +
+  geom_segment(
+    aes(
+      x = as.Date("2021-05-26"),
+      xend = as.Date("2021-05-26"),
+      y = 0, 
+      yend = -.2
+    )
+  )
+
+
+b
+ 
+# ggsave(
+#   filename = here::here("02_figs", "mass_shoot_panel_b_test.jpeg"),
+#   width = 8,
+#   height = 3.5,
+#   units = "in",
+#   dpi = 600,
+#   type = "cairo"
+# )
+```
+
+```{r}
+
+a / b + plot_layout(heights = c(1.2, .35))
+
+ggsave(
+  filename = here::here("02_figs", "mass_shooting.jpeg"),
+  width = 8,
+  height = 10,
+  units = "in",
+  dpi = 600# ,
+  # type = "cairo", 
+)
+
+
+```
+
+
+
