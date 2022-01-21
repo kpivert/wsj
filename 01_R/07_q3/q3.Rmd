@@ -1,0 +1,375 @@
+---
+title: 'WSJ: Q3 2021'
+author: "Kurtis Pivert"
+date: "10/2/2021"
+output: 
+    html_document:
+        toc: TRUE
+        theme: flatly
+        highlight: tango
+        code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE
+  )
+```
+
+```{r Load Packages, include=FALSE}
+
+require(knitr)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggthemes)
+require(ggtext)
+require(gridExtra)
+require(gridtext)
+require(cowplot)
+require(grid)
+require(tidyquant)
+require(tidyverse)
+
+```
+
+```{r Load Data}
+
+# Previously Downloaded and Cleaned Data
+
+df <- read_rds(
+  here::here("00_data", "06_q3/data.rds")
+)
+
+```
+
+# WSJ Cover Story 2021-09-03
+
+This script tries to recreate the visualization of index performance for 2021 up to Q3, including:
+
+-   S&P 500
+
+-   Nasdaq Composite
+
+-   Dow Jones Industrial Average
+
+## Get Index Performance from 2021-01-01 to 2021-09-30
+
+```{r Get Index Performanc, eval=FALSE}
+
+# Obtain Stock Prices from Yahoo! Finance via tidyquant
+
+sp500 <- tq_get("^GSPC", get = "stock.prices", from = "2020-12-31", to = "2021-10-01")
+
+nasdaq <- tq_get("^IXIC", get = "stock.prices", from = "2020-12-31", to = "2021-10-01")
+
+djia <- tq_get("^DJI", get = "stock.prices", from = "2020-12-31", to = "2021-10-01")
+
+
+```
+
+## Combine Stock Closing Prices
+
+```{r Conbine Data, eval=FALSE}
+
+df <- bind_rows(
+  sp500,
+  nasdaq,
+  djia
+)
+
+```
+
+## Calculate Percent changes from January 1, 2021
+
+```{r Calculate Pct Change, eval=FALSE}
+
+df <- df %>% 
+  mutate(
+    co_labels = case_when(
+      symbol == "^GSPC" ~ "S&P 500",
+      symbol == "^IXIC" ~ "Nasdaq Composite",
+      symbol == "^DJI" ~ "Dow Jones Industrial Average"
+    )
+  ) %>% 
+  group_by(symbol) %>% 
+  mutate(
+    pct_change = (adjusted - adjusted[1]) / adjusted[1]
+  ) %>% 
+  ungroup()
+
+# write_rds(
+#   x = df,
+#   file = here::here(
+#     "00_data",
+#     "06_q3/data.rds"
+#     )
+#   )
+
+```
+
+## Create Viz Part 1: Index Performance YTD
+
+```{r Viz Part 1}
+
+# str_glue to the rescue!!
+x <- seq(0, 15, 5)
+
+g1 <- ggplot(
+  df, 
+  aes(
+    x = date, 
+    y = pct_change
+    )
+  ) +
+  geom_line(
+    color = "#036084"
+  ) +
+  # geom_point(
+  #   data = df %>% 
+  #     group_by(symbol) %>% 
+  #     slice(n()),
+  #   color = "#036084",
+  #   size = 1,
+  #   aes(
+  #     x = date,
+  #     y = pct_change 
+  #   )
+  # ) +
+  geom_area(
+    fill = "#EBF5FE"
+  ) +
+  facet_wrap(~ fct_rev(co_labels), scales = "free_x") +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank(),
+    strip.text = element_blank()
+  ) +
+  # scale_x_date(
+  #   date_breaks = "1 month",
+  #   labels = c("Jan.", rep("", 7), "Sept.")
+  # )
+   scale_x_continuous(
+    breaks = seq(
+      as.Date("2021-01-01"), as.Date("2021-09-01"), by = "1 month"
+      ), 
+    labels = c("Jan.", rep("", 7), "Sept."), 
+    expand = expansion(mult = 0)
+  ) +
+  theme_tufte(
+    base_family = "Mukta"
+  ) +
+  scale_y_continuous(
+    labels = c(
+      str_glue("{x}  "),
+      "20%"
+    ),
+    breaks = seq(0, .2, .05),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text = element_text(family = "Roboto Condensed"),
+    strip.text = element_blank(),
+    plot.title = element_text(family = "Roboto Condensed"),
+    axis.text.y = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = 20, r = -20),
+      family = "Roboto Condensed"),
+    plot.caption = element_text(hjust = 0),
+    plot.subtitle = element_text(size = 7)
+  ) +
+  labs(
+    title = "The S&P rose for a sixth straight quarter,\ndespite registering a 4.8% decline in September.",
+    caption = "Source: FactSet",
+    subtitle = "Index performance, year to date",
+    y = "",
+    x = ""
+  ) +
+  geom_text(
+    data = df %>% 
+      group_by(symbol) %>% 
+      slice(n()), 
+    aes(
+      label = str_c(
+        "+", 
+        scales::percent(pct_change, accuracy = .1))
+    ),
+    family = "Roboto Condensed",
+    size = 4.5,
+    hjust = 1,
+    vjust = 1
+  ) +
+  geom_point(
+    data = df %>% 
+      group_by(symbol) %>% 
+      slice(n()),
+    color = "#036084",
+    size = 1,
+    aes(
+      x = date,
+      y = pct_change 
+    )
+  ) +
+  expand_limits(
+    x = c(
+      as.Date("2020-12-15"),
+      as.Date("2021-10-03")
+    )
+  ) +
+  # Rules
+  geom_segment(
+    aes(
+      x = as.Date("2020-12-15"), 
+      y = 0,
+      xend = as.Date("2021-10-01"),
+      yend = 0
+        ),
+    lwd = 0.05
+  ) 
+
+```
+
+## Create Viz Part 2: Inflation Mentions
+
+```{r}
+
+df_infl <- tibble(
+  qrtr = seq(
+    as.Date("2018-01-01"), as.Date("2021-06-01"), by = "3 months"
+    ) %>% 
+    as.character() %>% 
+    as_factor(),
+  inflation_mentions = c(
+    160, 164, 160, 163, 
+    130, 125, 127, 140, 
+    65, 70, 115, 148, 
+    195, 224
+  ),
+  fill = c(
+    rep("#78BEED", 13),
+    "#0278AF"
+  )
+)
+
+
+g2 <- ggplot(
+  df_infl, 
+  aes(
+    x = qrtr,
+    y = inflation_mentions
+    )
+  ) +
+  geom_col(
+    aes(
+      fill = fill
+      ),
+    width = 1
+  ) +
+  scale_x_discrete(
+    breaks = c("2018-01-01", "2019-01-01", 
+               "2020-01-01", "2021-01-01"),
+    labels = c("2018", "'19", "'20", "'21")
+  ) +
+  scale_fill_identity() +
+  scale_y_continuous(position = "right") +
+  theme_tufte(
+    base_family = "Mukta"
+  ) +
+  geom_hline(
+    data = tibble(
+      y = seq(50, 200, 50)
+    ),
+    aes(
+      yintercept = y
+    ),
+    color = "#ffffff"
+  ) +
+  theme(
+    axis.ticks.y = element_blank(),
+    plot.title = element_text(size = 10)
+  ) +
+  labs(
+    title = "Number of S&P 500\ncompanies mentioning\ninflation on their\nearnings calls\neach quarter"
+  ) +
+  annotate(
+    geom = "text",
+    x = "2018-01-01",
+    y = 200, 
+    label = "2Q 2021",
+    family = "Mukta",
+    size = 5
+  ) +
+  annotate(
+    geom = "text",
+    x = "2018-01-01",
+    y = 190,
+    label = "224 Companies",
+    family = "Mukta",
+    size = 7,
+    hjust = 1
+  ) +
+  annotate(
+    geom = "text",
+    x = "2018-01-01",
+    y = 160, 
+    label = "Most since FactSet\nbegan tracking data\nin 2010",
+    family = "Mukta",
+    size = 3,
+    lineheight = 0.5
+  ) +
+  geom_curve(
+    data = tibble(
+      x = "2019-01-01", 
+      y = 210, 
+      xend = "2021-01-01", 
+      yend = 220
+    ),
+    aes(
+      x = x,
+      y = y,
+      xend = xend,
+      yend = yend
+    ),
+    lwd = 0.6,
+    arrow = arrow(
+      length = unit(.5, "cm"),
+      type = "closed", 
+      angle = 20
+      ),
+    curvature = 0.1
+  )
+  
+# ggsave(
+#   "test_q3_pt2.png",
+#   width = 3,
+#   height = 6, 
+#   units = "in",
+#   dpi = 300,
+#   type = "cairo"
+# )
+
+
+```
+
+## Assemble Plot
+
+```{r}
+cowplot::plot_grid(g1, g2, rel_widths = c(3, 1))
+
+plot_grid(g1, g2, align = "h", axis = "b", rel_widths = c(3, 1))
+plot_grid(g1, g2, align = "h", axis = "bt", rel_widths = c(3, 1))
+
+ggsave(
+  "q3_test_2.png",
+  width = 10,
+  height = 10 * 0.618,
+  units = "in",
+  dpi = 600,
+  type = "cairo"
+  )
+```
+
+```{r}
+cowplot::
+```
