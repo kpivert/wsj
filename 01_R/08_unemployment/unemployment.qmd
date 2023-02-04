@@ -1,0 +1,41 @@
+---
+title: "WSJ Unemployment"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    number-sections: true
+editor: visual    
+---
+
+## Recreate WSJ D3 on Unemployment
+
+```{r Packages}
+#| echo: false
+#| message: false
+#| warning: false
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(ggiraph)
+require(tidyverse)
+
+```
+
+### Get Data from FRED St. Louis
+
+```{r}
+
+df <- 
+  read_csv(
+    here::here("00_data/07_unemployment", "NPPTTL.csv")
+  )
+
+```
+
+```{r}
+
+test <- df |> 
+  mutate(
+    difference = NPPTTL - NPPTTL[1]
+  )
+```
