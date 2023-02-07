@@ -1,0 +1,879 @@
+---
+title: "WSJ Unemployment"
+subtitle: "2023-02-04"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    number-sections: true
+editor: visual  
+---
+
+```{r}
+#| label: packages
+
+library(httr)
+library(jsonlite)
+require(ggthemes)
+require(extrafont)
+loadfonts(quiet = TRUE)
+require(camcorder)
+require(tidyverse)
+```
+
+```{r}
+#| label: api key
+fred_key <- Sys.getenv("FRED_API_KEY")
+```
+
+## Recreating Front Page Viz for Saturday, February 4, 2023
+
+![](images/IMG_1695.png){fig-align="center"}
+
+## Using the FRED St. Louis API
+
+Example for Pulling Series Data
+
+    https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json
+
+## Data Needs
+
+-   *I.1 Upper-left viz* need unemployment rate, seasonally adjusted from \~1969--2023: `UNRATE`
+
+-   *I.2 Upper-right viz* need nonfarm payrolls 2021--2023: `PAYEMS`
+
+-   *II Bottom-left* 2021--2023:
+
+-   II 2022--2023: National Change in Employment Since 2022
+
+    -   II.1 Financial activities
+
+        -   II.1.1 Employment : `USFIRE`
+
+        -   II.1.2 Average Hourly Earnings: `CES5500000003`
+
+    -   II.2 Professional and business services:
+
+        -   II.2.1 Employment : `USPBS`
+
+        -   II.2.2 Average Hourly Earnings: `CES6000000003`
+
+    -   II.3 Healthcare and Social Assistance:
+
+        -   II.3.1 Employment : `CES6562000001`
+
+        -   II.3.2 Average Hourly Earnings: \$39.96
+
+    -   II.4 Information: `USINFO`
+
+        -   II.4.1 Employment : `USFIRE`
+
+        -   II.4.2 Average Hourly Earnings: `CES5000000003`
+
+    -   II.5 Leisure and hospitality: `USLAH`
+
+        -   II.5.1 Employment : `USFIRE`
+
+        -   II.5.2 Average Hourly Earnings: `CES7000000003`
+
+-   *III Bottom-right* 2019--2023:
+
+    -   CPI: `CPIAUCSL`
+
+    -   Hourly earnings for all private workers: `CES0500000003`
+
+## I.1 `UNRATE`
+
+### First Try: Didn't Work Because I Queried `Series` Not `Observations`
+
+```{r}
+#| label: pull api data for unemployment rate
+#| eval: false
+
+# Paste URL 
+
+fred_api <- "https://api.stlouisfed.org/fred/"
+fred_type <- "series?series_id="
+series_UNRATE <- "UNRATE"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start <- "1969-01-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+# fred_api_example <- "https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json"
+
+unrate_api_call <- 
+  paste0(
+    fred_api, fred_type, series_UNRATE, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start, file_type_option,
+    file_type
+    )
+
+unrate <- GET(unrate_api_call)
+
+str(unrate)
+
+txt <- content(unrate, as = "text")
+
+print(txt)
+
+cat(txt)
+
+prettify(txt)
+
+unrate_df <- 
+  content(unrate, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(unrate_df)
+
+names(unrate_df)
+
+```
+
+### Take Two...Bingo
+
+```{r}
+#| label: monthly unemployment observations this time
+#| eval: false
+
+# Paste URL 
+fred_api <- "https://api.stlouisfed.org/fred/series/"
+fred_type <- "observations?series_id="
+series_UNRATE <- "UNRATE"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start <- "1969-01-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+# fred_api_example <- "https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json"
+
+unrate_api_call <- 
+  paste0(
+    fred_api, fred_type, series_UNRATE, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start, file_type_option,
+    file_type
+    )
+
+unrate <- GET(unrate_api_call)
+
+str(unrate)
+
+txt <- content(unrate, as = "text")
+
+print(txt)
+
+cat(txt)
+
+prettify(txt)
+
+# Persist Data
+
+write_json(txt, path = "../000_data_raw/unrate.json")
+
+
+```
+
+### Munge and Persist
+
+```{r}
+#| label: munge
+
+# Pull into a tibble
+
+unrate_df <- 
+  content(unrate, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(unrate_df)
+
+names(unrate_df)
+
+unrate_df <- 
+  unrate_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+# Mulitple Observations in one month, so.....
+
+unrate_df <- 
+  unrate_df |> 
+  group_by(date) |> 
+  slice(1) |> 
+  ungroup() |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date > lubridate::as_date("1969-02-01"),
+    date < lubridate::as_date("2023-03-01")
+  ) |> 
+  rename(
+    Date = date,
+    Rate = value
+  )
+
+# Persist Data
+
+# write_rds(unrate_df, "unrate.rds")
+
+```
+
+## I.2 `PAYEMS` 2021--2023
+
+### Pull from API
+
+```{r}
+#| label: PAYEMS API call
+#| eval: false
+
+
+# Paste URL 
+fred_api <- "https://api.stlouisfed.org/fred/series/"
+fred_type <- "observations?series_id="
+series_PAYEMS <- "PAYEMS"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start_payems <- "2020-12-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+
+payems_api_call <- 
+  paste0(
+    fred_api, fred_type, series_PAYEMS, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start_payems, file_type_option,
+    file_type
+    )
+
+payems <- GET(payems_api_call)
+
+str(payems)
+
+txt_payems <- content(payems, as = "text")
+
+print(txt_payems)
+
+cat(txt_payems)
+
+prettify(txt_payems)
+
+# Persist Data
+
+write_json(txt_payems, path = "../000_data_raw/payems.json")
+
+```
+
+### Munge and Persist
+
+```{r}
+#| label: PAYEMS data
+
+# Pull into a tibble
+
+payems_df <- 
+  content(payems, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(payems_df)
+
+names(payems_df)
+
+payems_df <- 
+  payems_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+payems_df <- 
+  payems_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2020-12-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(
+    n = 1
+  ) |> 
+  # slice_max(
+  #   n = 1,
+  #   order_by = date,
+  #   with_ties = FALSE
+  #   ) |>
+  # slice(1) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+# Calculate Monthly Changes
+
+payems_df <- 
+  payems_df |> 
+  mutate(
+    monthly_change = Payrolls - lag(Payrolls)
+  )
+
+# Persist Data
+
+# write_rds(payems_df, "../001_data/payems.rds")
+
+```
+
+## II National Change in Employment 2022--2023
+
+```{r}
+#| label: national change since 2022-01-01
+
+national_pct_change_from_2022 <- 
+  payems_df |> 
+  filter(
+    Date >= lubridate::as_date("2022-01-01"),
+    Date < lubridate::as_date("2023-02-01")
+  ) |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - payems_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          payems_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  pull(pct_change_from_2022)
+
+```
+
+## II.1 `USFIRE` 2021--2023
+
+### Pull from API
+
+```{r}
+#| label: USFIRE API call
+#| eval: false
+
+# Paste URL 
+fred_api <- "https://api.stlouisfed.org/fred/series/"
+fred_type <- "observations?series_id="
+series_USFIRE <- "USFIRE"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start_usfire <- "2020-12-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+
+usfire_api_call <- 
+  paste0(
+    fred_api, fred_type, series_USFIRE, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start_usfire, file_type_option,
+    file_type
+    )
+
+usfire <- GET(usfire_api_call)
+
+str(usfire)
+
+txt_usfire <- content(usfire, as = "text")
+
+print(txt_usfire)
+
+cat(txt_usfire)
+
+prettify(txt_usfire)
+
+# Persist Data
+
+# write_json(txt_usfire, path = "../000_data_raw/usfire.json")
+```
+
+### Munge and Persist
+
+```{r}
+#| label: USFIRE data
+
+# Pull into a tibble
+
+usfire_df <- 
+  content(usfire, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(usfire_df)
+
+names(usfire_df)
+
+usfire_df <- 
+  usfire_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+usfire_df <- 
+  usfire_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2022-01-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(n = 1) |> 
+  # mutate(value = mean(value)) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+tail(usfire_df)
+# Calculate Monthly Changes
+
+usfire_df <- 
+  usfire_df |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - usfire_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          usfire_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  bind_cols(national_pct_change_from_2022 = national_pct_change_from_2022)
+
+# Persist Data
+
+write_rds(usfire_df, "../001_data/usfire.rds")
+```
+
+## II.1.2 Average Hourly Earnings: `CES5500000003`
+
+Financial Activities \$42.48
+
+Average hourly earnings (January)
+
+## II.2 USPBS 2022--2023
+
+### Pull from API
+
+```{r}
+#| label: USPBS API call
+#| eval: false
+
+# Paste URL 
+fred_api <- "https://api.stlouisfed.org/fred/series/"
+fred_type <- "observations?series_id="
+series_USPBS <- "USPBS"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start_uspbs <- "2020-12-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+
+uspbs_api_call <- 
+  paste0(
+    fred_api, fred_type, series_USPBS, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start_uspbs, file_type_option,
+    file_type
+    )
+
+uspbs <- GET(uspbs_api_call)
+
+str(uspbs)
+
+txt_uspbs <- content(uspbs, as = "text")
+
+print(txt_uspbs)
+
+cat(txt_uspbs)
+
+prettify(txt_uspbs)
+
+# Persist Data
+
+# write_json(txt_uspbs, path = "../000_data_raw/uspbs.json")
+```
+
+### Munge and Persist
+
+```{r}
+#| label: USPBS data
+
+# Pull into a tibble
+
+uspbs_df <- 
+  content(uspbs, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(uspbs_df)
+
+names(uspbs_df)
+
+uspbs_df <- 
+  uspbs_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+uspbs_df <- 
+  uspbs_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2022-01-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(n = 1) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+tail(uspbs_df)
+# Calculate Monthly Changes
+
+uspbs_df <- 
+  uspbs_df |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - uspbs_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          uspbs_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  bind_cols(national_pct_change_from_2022 = national_pct_change_from_2022)
+
+# Persist Data
+
+# write_rds(uspbs_df, "../001_data/uspbs.rds")
+```
+
+## II.2.2 Average Hourly Earnings: CES6000000003
+
+Professional and Business Services \$39.64
+
+## Finally...a Function
+
+```{r}
+#| label: function for doing this....api call
+
+fred_fun_1 <- function(series = "USPBS") {
+  # Paste URL 
+  fred_api <- "https://api.stlouisfed.org/fred/series/"
+  fred_type <- "observations?series_id="
+  series <- series
+  api_key_prefix <- "&api_key="
+  realtime_prefix <- "&realtime_start="
+  realtime_start <- "2020-12-01"
+  file_type_option <- "&file_type="
+  file_type <- "json"
+  
+  api_call <- 
+    paste0(
+      fred_api, fred_type, series, 
+      api_key_prefix, fred_key, realtime_prefix, 
+      realtime_start, file_type_option,
+      file_type
+    )
+  
+  result <- GET(api_call)
+  
+  result_txt <- content(result, as = "text")
+  
+  # Persist Data
+  
+  write_json(
+    result_txt, 
+    path = paste0("01_R/09_unemployment_2023-02-04/000_data_raw/", tolower(series), ".json")
+    )  
+  
+  # return(paste0(series, "_", result_txt))
+}
+```
+
+## ...and another ... that doesn't work...yet
+
+```{r}
+#| eval: false
+
+
+fred_fun_2 <- function(txt = "uspbs") {
+
+txt_quo <- enquo(txt)  
+  
+df <- 
+  {{txt}} |>
+  fromJSON() |>
+  as_tibble()
+
+df <- 
+  df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+df <- 
+  df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2022-01-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(n = 1) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+# Calculate Monthly Changes
+
+df <- 
+  df |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  bind_cols(national_pct_change_from_2022 = national_pct_change_from_2022)
+
+# Persist Data
+
+write_rds(
+  df, 
+  paste0("01_R/09_unemployment_2023-02-04/001_data/", tolower(txt), ".rds")
+    )
+
+}
+```
+
+## I. Viz---Unemployment Rate
+
+```{r}
+#| label: set up camcorder
+
+gg_record(
+  dir = file.path("../003_images", "recording"), 
+  device = "png", # we need to set the Cairo device
+  width = 8,
+  height = 5,
+  bg = "#ffffff"
+)
+
+
+```
+
+```{r}
+#| label: first viz take
+
+ggplot(
+  unrate_df,
+  aes(
+    x = Date,
+    y = Rate
+    )
+  ) +
+  geom_line()
+
+p <- 
+  ggplot(
+    unrate_df,
+    aes(
+      x = Date,
+      y = Rate
+      )
+    )
+```
+
+### Adjusting
+
+```{r}
+#| label: adding more customizations
+
+p <- 
+  p + 
+  geom_line(
+    color = "#548586",
+    linewidth = 1.2
+  ) +
+  geom_area(
+    fill = "#C9EAEE"
+  ) 
+
+p
+```
+
+```{r}
+
+p <- p +
+  scale_x_continuous(
+    breaks = seq(
+      as.Date("1970-01-01"), as.Date("2020-01-01"), by = "10 years"
+      ), 
+    labels = c("1970", "'80", "'90", "2000", "'10", "'20")
+)
+
+
+
+
+```
+
+```{r}
+
+p <- p +
+  theme_minimal(
+    base_family = "Mukta"
+  ) +
+  theme(
+    panel.grid = element_blank()
+  ) +
+  geom_segment(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = as.Date("1969-03-01"), 
+      xend = as.Date("2023-01-01"),
+      y = 3.4,
+      yend = 3.4
+    ),
+    aes(
+      x = x,
+      xend = xend,
+      y = y, 
+      yend = yend
+    ),
+    linetype = "dotted"
+  ) 
+
+p
+
+ 
+```
+
+```{r}
+p +
+  geom_segment(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = as.Date("1969-03-01"), 
+      xend = as.Date("2023-01-01"),
+      y = 5,
+      yend = 5
+    ),
+    aes(
+      x = x,
+      xend = xend,
+      y = y, 
+      yend = yend
+    ),
+    linewidth = 0.5,
+    color = "#cccccc"
+  ) 
+
+scale_y_continuous(
+    labels = c(
+      str_glue("{x}  "),
+      "20%"
+    ),
+    breaks = seq(0, .2, .05),
+    expand = expansion(mult = c(0, 0.1))
+  ) +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text = element_text(family = "Roboto Condensed"),
+    strip.text = element_blank(),
+    plot.title = element_text(family = "Roboto Condensed"),
+    axis.text.y = element_text(
+      vjust = - 0.8, 
+      margin = margin(l = 20, r = -20),
+      family = "Roboto Condensed"),
+    plot.caption = element_text(hjust = 0),
+    plot.subtitle = element_text(size = 7)
+  ) +
+  labs(
+    title = "The S&P rose for a sixth straight quarter,\ndespite registering a 4.8% decline in September.",
+    caption = "Source: FactSet",
+    subtitle = "Index performance, year to date",
+    y = "",
+    x = ""
+  ) +
+  geom_text(
+    data = df %>% 
+      group_by(symbol) %>% 
+      slice(n()), 
+    aes(
+      label = str_c(
+        "+", 
+        scales::percent(pct_change, accuracy = .1))
+    ),
+    family = "Roboto Condensed",
+    size = 4.5,
+    hjust = 1,
+    vjust = 1
+  ) +
+  geom_point(
+    data = df %>% 
+      group_by(symbol) %>% 
+      slice(n()),
+    color = "#036084",
+    size = 1,
+    aes(
+      x = date,
+      y = pct_change 
+    )
+  ) +
+  expand_limits(
+    x = c(
+      as.Date("2020-12-15"),
+      as.Date("2021-10-03")
+    )
+  ) +
+  # Rules
+  geom_segment(
+    aes(
+      x = as.Date("2020-12-15"), 
+      y = 0,
+      xend = as.Date("2021-10-01"),
+      yend = 0
+        ),
+    lwd = 0.05
+  ) 
+```
