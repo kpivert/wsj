@@ -11,13 +11,17 @@ editor: visual
 
 ```{r}
 #| label: packages
+#| warning: false
+#| message: false
 
 library(httr)
 library(jsonlite)
 require(ggthemes)
+require(ggtext)
 require(extrafont)
 loadfonts(quiet = TRUE)
 require(camcorder)
+require(showtext)
 require(tidyverse)
 ```
 
@@ -26,7 +30,7 @@ require(tidyverse)
 fred_key <- Sys.getenv("FRED_API_KEY")
 ```
 
-## Recreating Front Page Viz for Saturday, February 4, 2023
+# Recreating Front Page Viz for Saturday, February 4, 2023
 
 ![](images/IMG_1695.png){fig-align="center"}
 
@@ -36,51 +40,51 @@ Example for Pulling Series Data
 
     https://api.stlouisfed.org/fred/series?series_id=GNPCA&api_key=abcdefghijklmnopqrstuvwxyz123456&file_type=json
 
-## Data Needs
+# Data Needs
 
--   *I.1 Upper-left viz* need unemployment rate, seasonally adjusted from \~1969--2023: `UNRATE`
+-   *I.1 Upper-left viz* need unemployment rate, seasonally adjusted from \~1969--2023: `UNRATE` DONE
 
--   *I.2 Upper-right viz* need nonfarm payrolls 2021--2023: `PAYEMS`
+-   *I.2 Upper-right viz* need nonfarm payrolls 2021--2023: `PAYEMS` DONE
 
 -   *II Bottom-left* 2021--2023:
 
--   II 2022--2023: National Change in Employment Since 2022
+-   II 2022--2023: National Change in Employment Since 2022 DONE
 
     -   II.1 Financial activities
 
-        -   II.1.1 Employment : `USFIRE`
+        -   II.1.1 Employment: `USFIRE` DONE
 
-        -   II.1.2 Average Hourly Earnings: `CES5500000003`
+        -   II.1.2 Average Hourly Earnings: `CES5500000003` DONE
 
     -   II.2 Professional and business services:
 
-        -   II.2.1 Employment : `USPBS`
+        -   II.2.1 Employment: `USPBS` DONE
 
-        -   II.2.2 Average Hourly Earnings: `CES6000000003`
+        -   II.2.2 Average Hourly Earnings: `CES6000000003` DONE
 
     -   II.3 Healthcare and Social Assistance:
 
-        -   II.3.1 Employment : `CES6562000001`
+        -   II.3.1 Employment: `CES6562000001` DONE
 
-        -   II.3.2 Average Hourly Earnings: \$39.96
+        -   II.3.2 Average Hourly Earnings: \$39.96 DONE
 
     -   II.4 Information: `USINFO`
 
-        -   II.4.1 Employment : `USFIRE`
+        -   II.4.1 Employmen: `USINFO` DONE
 
-        -   II.4.2 Average Hourly Earnings: `CES5000000003`
+        -   II.4.2 Average Hourly Earnings: \$47.78 `CES5000000003` DONE
 
     -   II.5 Leisure and hospitality: `USLAH`
 
-        -   II.5.1 Employment : `USFIRE`
+        -   II.5.1 Employment: `USLAH` DONE
 
-        -   II.5.2 Average Hourly Earnings: `CES7000000003`
+        -   II.5.2 Average Hourly Earnings: `CES7000000003` DONE
 
 -   *III Bottom-right* 2019--2023:
 
-    -   CPI: `CPIAUCSL`
+    -   CPI: `CPIAUCSL` DONE
 
-    -   Hourly earnings for all private workers: `CES0500000003`
+    -   Hourly earnings for all private workers: `CES0500000003` DONE
 
 ## I.1 `UNRATE`
 
@@ -91,7 +95,6 @@ Example for Pulling Series Data
 #| eval: false
 
 # Paste URL 
-
 fred_api <- "https://api.stlouisfed.org/fred/"
 fred_type <- "series?series_id="
 series_UNRATE <- "UNRATE"
@@ -181,7 +184,7 @@ write_json(txt, path = "../000_data_raw/unrate.json")
 
 ```{r}
 #| label: munge
-
+#| eval: false
 # Pull into a tibble
 
 unrate_df <- 
@@ -222,7 +225,14 @@ unrate_df <-
 # Persist Data
 
 # write_rds(unrate_df, "unrate.rds")
+```
 
+### Read Cleaned Data
+
+```{r}
+#| label: read clean UNRATE data
+
+unrate_df <- read_rds(file = "../001_data/unrate.rds")
 ```
 
 ## I.2 `PAYEMS` 2021--2023
@@ -232,7 +242,6 @@ unrate_df <-
 ```{r}
 #| label: PAYEMS API call
 #| eval: false
-
 
 # Paste URL 
 fred_api <- "https://api.stlouisfed.org/fred/series/"
@@ -274,6 +283,7 @@ write_json(txt_payems, path = "../000_data_raw/payems.json")
 
 ```{r}
 #| label: PAYEMS data
+#| eval: false
 
 # Pull into a tibble
 
@@ -329,6 +339,15 @@ payems_df <-
 # Persist Data
 
 # write_rds(payems_df, "../001_data/payems.rds")
+
+```
+
+### Read Cleaned Data
+
+```{r}
+#| label: read clean PAYEMS data
+
+payems_df <- read_rds("../001_data/payems.rds")
 
 ```
 
@@ -405,6 +424,7 @@ prettify(txt_usfire)
 
 ```{r}
 #| label: USFIRE data
+#| eval: false
 
 # Pull into a tibble
 
@@ -465,6 +485,15 @@ usfire_df <-
 write_rds(usfire_df, "../001_data/usfire.rds")
 ```
 
+### Read Cleaned Data
+
+```{r}
+#| label: read USFIRE data
+
+usfire_df <- read_rds("../001_data/usfire.rds")
+
+```
+
 ## II.1.2 Average Hourly Earnings: `CES5500000003`
 
 Financial Activities \$42.48
@@ -518,6 +547,7 @@ prettify(txt_uspbs)
 
 ```{r}
 #| label: USPBS data
+#| eval: false
 
 # Pull into a tibble
 
@@ -577,6 +607,15 @@ uspbs_df <-
 # write_rds(uspbs_df, "../001_data/uspbs.rds")
 ```
 
+### Read Cleaned Data
+
+```{r}
+#| label: read USPBS data
+
+uspbs_df <- read_rds("../001_data/uspbs.rds")
+
+```
+
 ## II.2.2 Average Hourly Earnings: CES6000000003
 
 Professional and Business Services \$39.64
@@ -612,12 +651,14 @@ fred_fun_1 <- function(series = "USPBS") {
   # Persist Data
   
   write_json(
-    result_txt, 
+    result, 
     path = paste0("01_R/09_unemployment_2023-02-04/000_data_raw/", tolower(series), ".json")
     )  
   
   # return(paste0(series, "_", result_txt))
 }
+
+
 ```
 
 ## ...and another ... that doesn't work...yet
@@ -686,19 +727,576 @@ write_rds(
 }
 ```
 
+## ... and another function attempt
+
+```{r}
+#| label: take three
+
+fred_fun_3 <- function(series = "USPBS") {
+  # Paste URL 
+  fred_api <- "https://api.stlouisfed.org/fred/series/"
+  fred_type <- "observations?series_id="
+  series <- series
+  api_key_prefix <- "&api_key="
+  realtime_prefix <- "&realtime_start="
+  realtime_start <- "2020-12-01"
+  file_type_option <- "&file_type="
+  file_type <- "json"
+  
+  api_call <- 
+    paste0(
+      fred_api, fred_type, series, 
+      api_key_prefix, fred_key, realtime_prefix, 
+      realtime_start, file_type_option,
+      file_type
+    )
+  
+  GET(api_call)
+}
+
+```
+
+## II.3 Healthcare and Social Assistance 2022--2023
+
+### Pull from API
+
+```{r}
+#| eval: false
+
+health_social_asst <- 
+  fred_fun_3(series = "CES6562000001")
+  # Persist Data
+  
+  write_json(
+    content(health_social_asst, as = "text"), 
+    path ="../000_data_raw/health_social_asst.json"
+    )  
+
+```
+
+### Munge and Persist
+
+```{r}
+#| eval: false
+# Pull into a tibble
+
+health_social_asst_df <- 
+  content(health_social_asst, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(health_social_asst_df)
+
+names(health_social_asst_df)
+
+health_social_asst_df <- 
+  health_social_asst_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+health_social_asst_df <- 
+  health_social_asst_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2022-01-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(n = 1) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+tail(health_social_asst_df)
+# Calculate Monthly Changes
+
+health_social_asst_df <- 
+  health_social_asst_df |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - health_social_asst_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          health_social_asst_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  bind_cols(national_pct_change_from_2022 = national_pct_change_from_2022)
+
+# Persist Data
+
+write_rds(uspbs_df, "../001_data/health_social_asst.rds")
+
+
+```
+
+### Read Cleaned Data
+
+```{r}
+health_social_asst_df <- read_rds("../001_data/health_social_asst.rds")
+
+```
+
+## II.3.2 Average Hourly Earnings
+
+Healthcare and Social Assistance \$39.96
+
+## II.4 Information: USINFO 2022--2023
+
+### Pull from API
+
+```{r}
+#| eval: false
+
+usinfo <- 
+  fred_fun_3(series = "USINFO")
+  # Persist Data
+  
+  write_json(
+    content(usinfo, as = "text"), 
+    path ="../000_data_raw/usinfo.json"
+    )  
+
+```
+
+### Munge and Persist
+
+```{r}
+#| eval: false
+# Pull into a tibble
+
+usinfo_df <- 
+  content(usinfo, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+head(usinfo_df)
+
+names(usinfo_df)
+
+usinfo_df <- 
+  usinfo_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+usinfo_df <- 
+  usinfo_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2022-01-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(n = 1) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+tail(usinfo_df)
+# Calculate Monthly Changes
+
+usinfo_df <- 
+  usinfo_df |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - usinfo_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          usinfo_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  bind_cols(national_pct_change_from_2022 = national_pct_change_from_2022)
+
+# Persist Data
+
+write_rds(usinfo_df, "../001_data/usinfo.rds")
+```
+
+### Read Cleaned Data
+
+```{r}
+usinfo_df <- read_rds("../001_data/usinfo.rds")
+
+```
+
+## II.4.2 Average Hourly Earnings: CES5000000003
+
+Information Average Hourly Earnings: \$47.78
+
+## II.5 Leisure and hospitality 2022--2023 USLAH
+
+### Pull from API
+
+```{r}
+#| eval: false
+
+uslah <- 
+  fred_fun_3(series = "USLAH")
+  # Persist Data
+  
+  write_json(
+    content(uslah, as = "text"), 
+    path ="../000_data_raw/uslah.json"
+    )  
+```
+
+### Munge and Persist
+
+```{r}
+#| eval: false
+# Pull into a tibble
+
+uslah_df <- 
+  content(uslah, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+uslah_df <- 
+  uslah_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+uslah_df <- 
+  uslah_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2022-01-01"),
+    date <= lubridate::as_date("2023-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(n = 1) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Payrolls = value
+  )
+
+# Calculate Monthly Changes
+
+uslah_df <- 
+  uslah_df |> 
+  mutate(
+    pct_change_from_2022 = 
+      (
+        (Payrolls - uslah_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")) / 
+          uslah_df |> 
+          filter(Date == as.Date("2022-01-01")) |> 
+          pluck("Payrolls")
+        )
+    ) |> 
+  bind_cols(national_pct_change_from_2022 = national_pct_change_from_2022)
+
+# Persist Data
+
+write_rds(uslah_df, "../001_data/uslah.rds")
+```
+
+### Read Cleaned Data
+
+```{r}
+uslah_df <- read_rds("../001_data/uslah.rds")
+```
+
+## 
+
+II.5.2 Average Hourly Earnings: CES7000000003
+
+Leisure and hospitality Average Hourly Earnings: \$20.78
+
+## III CPI 2019--2023: `CPIAUCSL`
+
+### Pull from API
+
+```{r}
+#| label: CPIAUCSL API call
+#| eval: false
+
+# Paste URL 
+fred_api <- "https://api.stlouisfed.org/fred/series/"
+fred_type <- "observations?series_id="
+series_CPIAUCSL <- "CPIAUCSL"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start_CPIAUCSL <- "2019-01-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+
+CPIAUCSL_api_call <- 
+  paste0(
+    fred_api, fred_type, series_CPIAUCSL, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start_CPIAUCSL, file_type_option,
+    file_type
+    )
+
+CPIAUCSL <- GET(CPIAUCSL_api_call)
+
+str(CPIAUCSL)
+
+txt_CPIAUCSL <- content(CPIAUCSL, as = "text")
+
+print(txt_CPIAUCSL)
+
+cat(txt_CPIAUCSL)
+
+prettify(txt_CPIAUCSL)
+
+# Persist Data
+
+write_json(txt_CPIAUCSL, path = "../000_data_raw/CPIAUCSL.json")
+
+```
+
+### Munge and Persist
+
+```{r}
+#| label: CPIAUCSL data
+#| eval: false
+
+# Pull into a tibble
+
+CPIAUCSL_df <- 
+  content(CPIAUCSL, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+CPIAUCSL_df <- 
+  CPIAUCSL_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+CPIAUCSL_df <- 
+  CPIAUCSL_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2019-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(
+    n = 1
+  ) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    CPI = value
+  )
+
+# Calculate Year Over Year Changes
+
+CPIAUCSL_df <- 
+  CPIAUCSL_df |> 
+  mutate(
+    yearly_pct_change = (CPI - lag(CPI, n = 12)) / lag(CPI, n = 12)
+  )
+
+# Persist Data
+
+# write_rds(CPIAUCSL_df, "../001_data/CPIAUCSL.rds")
+```
+
+### Read Cleaned Data
+
+```{r}
+CPIAUCSL_df <- read_rds("../001_data/CPIAUCSL.rds")
+```
+
+## 
+
+III Hourly earnings for all private workers: 2019--2023: `CES0500000003`
+
+### Pull from API
+
+```{r}
+#| label: CES0500000003 API call
+#| eval: false
+
+# Paste URL 
+fred_api <- "https://api.stlouisfed.org/fred/series/"
+fred_type <- "observations?series_id="
+series_CES0500000003 <- "CES0500000003"
+api_key_prefix <- "&api_key="
+realtime_prefix <- "&realtime_start="
+realtime_start_CES0500000003 <- "2019-01-01"
+file_type_option <- "&file_type="
+file_type <- "json"
+
+CES0500000003_api_call <- 
+  paste0(
+    fred_api, fred_type, series_CES0500000003, 
+    api_key_prefix, fred_key, realtime_prefix, 
+    realtime_start_CES0500000003, file_type_option,
+    file_type
+    )
+
+CES0500000003 <- GET(CES0500000003_api_call)
+
+str(CES0500000003)
+
+txt_CES0500000003 <- content(CES0500000003, as = "text")
+
+print(txt_CES0500000003)
+
+cat(txt_CES0500000003)
+
+prettify(txt_CES0500000003)
+
+# Persist Data
+
+write_json(txt_CES0500000003, path = "../000_data_raw/CES0500000003.json")
+```
+
+### Munge and Persist
+
+```{r}
+#| label: CPIAUCSL data
+#| eval: false
+
+# Pull into a tibble
+
+CES0500000003_df <- 
+  content(CES0500000003, as = "text") |>
+  fromJSON() |>
+  as_tibble()
+
+CES0500000003_df <- 
+  CES0500000003_df |> 
+  pull(observations) |> 
+  as_tibble() |> 
+  select(date, value) 
+
+CES0500000003_df <- 
+  CES0500000003_df |> 
+  mutate(
+    date = lubridate::as_date(date),
+    value = as.numeric(value)
+  ) |> 
+  filter(
+    date >= lubridate::as_date("2019-01-01")
+  ) |> 
+  group_by(date) |> 
+  slice_tail(
+    n = 1
+  ) |> 
+  ungroup() |> 
+  rename(
+    Date = date,
+    Earnings = value
+  )
+
+# Calculate Year Over Year Changes
+
+CES0500000003_df <- 
+  CES0500000003_df |> 
+  mutate(
+    yearly_pct_change = (Earnings - lag(Earnings, n = 12)) / lag(Earnings, n = 12)
+  )
+
+# Persist Data
+
+write_rds(CES0500000003_df, "../001_data/CES0500000003.rds")
+```
+
+### Read Cleaned Data
+
+```{r}
+CES0500000003_df <- read_rds("../001_data/CES0500000003.rds")
+```
+
+## III. Combine into 1 Dataset
+
+```{r}
+
+# Add NA for missing observation for January 2023
+CPIAUCSL_df <- 
+  CPIAUCSL_df |> 
+  bind_rows(
+    tibble(
+      Date = as.Date("2023-01-01"), 
+      CPI = NA_real_, 
+      yearly_pct_change = NA_real_)
+    ) 
+
+cpi_earnings_df <- 
+  CPIAUCSL_df |> 
+  left_join(
+    CES0500000003_df,
+    by = "Date"
+    ) |> 
+  rename(
+    cpi_pct_change = yearly_pct_change.x, 
+    earnings_pct_change = yearly_pct_change.y
+    ) |> 
+  select(-c(CPI, Earnings)) |> 
+  pivot_longer(
+    names_to = "Variable",
+    values_to = "Pct_Change",
+    cols = -Date
+  ) |> 
+  mutate(
+    Variable = str_replace_all(
+      Variable, 
+      "_pct_change",
+      ""
+    )
+  ) |> 
+  filter(
+    Date >= as.Date("2020-01-01")
+  )
+
+
+```
+
+# Visualizations
+
 ## I. Viz---Unemployment Rate
 
 ```{r}
 #| label: set up camcorder
 
 gg_record(
-  dir = file.path("../003_images", "recording"), 
+  dir = file.path("../003_images", "recording_2"), 
   device = "png", # we need to set the Cairo device
   width = 8,
   height = 5,
   bg = "#ffffff"
 )
 
+
+```
+
+```{r}
+showtext_auto()
+
+font_add_google("Mukta")
+font_add_google("Mukta")
+font_add_google("Roboto Condensed")
 
 ```
 
@@ -727,6 +1325,64 @@ p <-
 ### Adjusting
 
 ```{r}
+p <- 
+  p +
+  geom_segment(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = as.Date("1969-03-01"), 
+      xend = as.Date("2023-01-01"),
+      y = 5,
+      yend = 5
+    ),
+    aes(
+      x = x,
+      xend = xend,
+      y = y, 
+      yend = yend
+    ),
+    linewidth = 0.5,
+    color = "#cccccc"
+  ) +
+  geom_segment(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = as.Date("1983-01-01"), 
+      xend = as.Date("2023-01-01"),
+      y = 10,
+      yend = 10
+    ),
+    aes(
+      x = x,
+      xend = xend,
+      y = y, 
+      yend = yend
+    ),
+    linewidth = 0.5,
+    color = "#cccccc"
+  ) +
+  geom_segment(
+    inherit.aes = FALSE,
+    data = tibble(
+      x = as.Date("2020-01-01"), 
+      xend = as.Date("2023-01-01"),
+      y = 15,
+      yend = 15
+    ),
+    aes(
+      x = x,
+      xend = xend,
+      y = y, 
+      yend = yend
+    ),
+    linewidth = 0.5,
+    color = "#cccccc"
+  ) 
+
+p
+```
+
+```{r}
 #| label: adding more customizations
 
 p <- 
@@ -736,7 +1392,8 @@ p <-
     linewidth = 1.2
   ) +
   geom_area(
-    fill = "#C9EAEE"
+    fill = "#C9EAEE",
+    alpha = .5
   ) 
 
 p
@@ -753,7 +1410,7 @@ p <- p +
 )
 
 
-
+p
 
 ```
 
@@ -789,7 +1446,9 @@ p
 ```
 
 ```{r}
-p +
+
+x <- c(0, 5)
+p <- p +
   geom_segment(
     inherit.aes = FALSE,
     data = tibble(
@@ -806,74 +1465,77 @@ p +
     ),
     linewidth = 0.5,
     color = "#cccccc"
-  ) 
-
-scale_y_continuous(
+  ) +
+  scale_y_continuous(
+    position = "right",
     labels = c(
-      str_glue("{x}  "),
-      "20%"
+      str_glue("  {x}  "),
+      "10",
+      "15%"
     ),
-    breaks = seq(0, .2, .05),
-    expand = expansion(mult = c(0, 0.1))
+    breaks = seq(0, 15, 5) #,
+  #  expand = expansion(mult = c(0, 0.1))
   ) +
   theme(
     axis.ticks.y = element_blank(),
-    axis.text = element_text(family = "Roboto Condensed"),
-    strip.text = element_blank(),
-    plot.title = element_text(family = "Roboto Condensed"),
-    axis.text.y = element_text(
+  #  axis.text = element_text(family = "Roboto Condensed"),
+  #  strip.text = element_blank(),
+  #  plot.title = element_text(family = "Roboto Condensed"),
+    axis.text.y.right =  element_text(
       vjust = - 0.8, 
-      margin = margin(l = 20, r = -20),
-      family = "Roboto Condensed"),
-    plot.caption = element_text(hjust = 0),
-    plot.subtitle = element_text(size = 7)
+      margin = margin(l = -40, r = 20),
+      ) #,
+  #  plot.caption = element_text(hjust = 0),
+  #  plot.subtitle = element_text(size = 7)
   ) +
   labs(
-    title = "The S&P rose for a sixth straight quarter,\ndespite registering a 4.8% decline in September.",
-    caption = "Source: FactSet",
-    subtitle = "Index performance, year to date",
     y = "",
     x = ""
   ) +
-  geom_text(
-    data = df %>% 
-      group_by(symbol) %>% 
-      slice(n()), 
-    aes(
-      label = str_c(
-        "+", 
-        scales::percent(pct_change, accuracy = .1))
-    ),
+  annotate(
+    geom = "text",
+    x = 1,
+    y = 15, 
+    label = "The U.S. added 517,000 jobs in January, more than twice what was predicted, and\nunemployment fell to a 53-year low. Wage gains cooled on a year-over-year basis.",
+    family = "Mukta",
+    size = 3, 
+    hjust = 0
+  )
+
+p
+```
+
+```{r}
+p <- 
+  p +
+  annotate(
+    geom = "text",
+    label = "Unemployment rate*",
+    family = "Mukta",
+    x = as.Date("1971-01-01"),
+    y = 2.5,
+    size = 5, 
+    hjust = 0
+  ) +
+  annotate(
+    geom = "text",
+    label = "LOWEST LEVEL IN 53 YEARS",
     family = "Roboto Condensed",
-    size = 4.5,
-    hjust = 1,
-    vjust = 1
+    x = as.Date("1992-01-01"),
+    y = 2.8,
+    size = 3, 
+    hjust = 0
   ) +
-  geom_point(
-    data = df %>% 
-      group_by(symbol) %>% 
-      slice(n()),
-    color = "#036084",
-    size = 1,
-    aes(
-      x = date,
-      y = pct_change 
-    )
-  ) +
-  expand_limits(
-    x = c(
-      as.Date("2020-12-15"),
-      as.Date("2021-10-03")
-    )
-  ) +
-  # Rules
-  geom_segment(
-    aes(
-      x = as.Date("2020-12-15"), 
-      y = 0,
-      xend = as.Date("2021-10-01"),
-      yend = 0
-        ),
-    lwd = 0.05
-  ) 
+  annotate(
+    geom = "richtext",
+    label = "January <b style = 'color:red; font-size20pt;'>3.4%</b>",
+    x = as.Date("2015-01-01"),
+    y = 1.5,
+    size = 3, 
+    hjust = 0,
+    family = "Mukta"
+  )
+
+
+p
 ```
