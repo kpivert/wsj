@@ -302,6 +302,13 @@ scale_df <-
     fill_color = c(pal[4], pal[3], pal[2], pal[1])
   )
 
+zero_na_df <-
+  tibble(
+    x = 1,
+    y = 0.1,
+    fill_color = c(pal[6])
+  )
+
 top_legend <-
   ggplot(
     scale_df,
@@ -321,9 +328,9 @@ top_legend <-
   theme_void(
     base_family = "Arial Narrow"
   ) +
-  expand_limits(
-    y = 10
-  ) +
+  # expand_limits(
+  #   y = 10
+  # ) +
   scale_x_continuous(
     breaks = seq(15, 45, 10),
     labels = seq(10, 40, 10)  |> as.character()
@@ -331,7 +338,7 @@ top_legend <-
   theme(
     axis.text.x.bottom = element_text(
       vjust = 0.5,
-      size = 4
+      size = 10
     ),
     plot.background = element_rect(
       color = pal[6],
@@ -361,3 +368,40 @@ top_legend <-
 #   )
 
 top_legend / a
+
+
+a
+
+(top_legend + coord_fixed(ratio = .65)) / a
+
+b <-
+  top_legend +
+  coord_fixed(
+    ratio = 0.7
+  ) +
+  theme(
+    plot.margin = margin(10, 5, 10, 40, "pt")
+  )
+
+(b / a) +
+  plot_annotation(
+    title = "Federal Medicaid funding from hospital & nursing-\nhome taxes, forecast for fiscal year 2026, %"
+  ) &
+  theme(
+    plot.background = element_rect(
+        color = pal[6],
+        fill = pal[6]
+      ),
+      panel.background = element_rect(
+        fill = pal[6],
+        color = pal[6]
+      )
+  )
+
+# ggsave(
+#   filename = "05_choropleth/third_take.png",
+#   width = 3, 
+#   height = 3.1,
+#   units = "in",
+#   dpi = 300
+# )
