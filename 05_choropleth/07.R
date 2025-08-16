@@ -1,14 +1,14 @@
-#  2025-07-27 Economist Choropleth in ggplot2
+# Economist U.S, State Grid Choropleth Function
 
 # 00 Libraries ------------------------------------------------------------
 
 # Needed for Econ Sans typeface
 # require(hrbrthemes)
+require(ggpp)
 require(extrafont)
 loadfonts(quiet = TRUE)
 require(patchwork)
 require(tidyverse)
-
 
 # 01 Data -----------------------------------------------------------------
 
@@ -139,19 +139,27 @@ choropleth <-
         label = State,
         color = text_color
       ),
-      family = "EconSansCndReg", 
+      family = "Arial Narrow", 
       size = 3.4
     ) +
     scale_color_identity() +
     labs(
+      # title = "Federal Medicaid funding from hospital & nursing-\nhome taxes, forecast for fiscal year 2026, %",
       caption = "Source: The Hilltop Institute"
     ) +
     theme(
       plot.caption = element_text(
         hjust = 0.06,
-        family = "EconSansCndReg", 
+        family = "Arial Narrow", 
         color = "#5c5c5c"
       ),
+      # plot.title = element_text(
+      #   size = 10,
+      #   family = "Arial Narrow Bold",
+      #   hjust = 0.10,
+      #   margin = margin(0, 0, 10, 10, unit = "pt")
+      # ),
+      plot.title.position = "panel",
       plot.caption.position = "plot",
       plot.background = element_rect(
         color = pal[6],
@@ -177,6 +185,7 @@ zero_na_df <-
     fill_color = c(pal[6])
   )
 
+
 top_legend <-
   ggplot(
     scale_df,
@@ -194,7 +203,7 @@ top_legend <-
   ) +
   scale_fill_identity() +
   theme_void(
-    base_family = "EconSansCndReg"
+    base_family = "Arial Narrow"
   ) +
   scale_x_continuous(
     breaks = seq(15, 45, 10),
@@ -232,7 +241,7 @@ zero_na_legend <-
   ) +
   scale_fill_identity() +
   theme_void(
-    base_family = "EconSansCndReg"
+    base_family = "Arial Narrow"
   ) +
   scale_x_continuous(
     breaks = 1,
@@ -272,7 +281,56 @@ zero_na_legend <-
   theme(
     plot.title = element_text(
       size = 10,
-      family = "EconSansCndMed",
+      family = "Arial Narrow Bold",
+      hjust = 0.10
+    ),
+    plot.title.position = "plot",
+    plot.background = element_rect(
+        color = pal[6],
+        fill = pal[6]
+      ),
+      panel.background = element_rect(
+        fill = pal[6],
+        color = pal[6]
+      )
+  )
+
+top_legend
+
+zero_na_legend
+
+# ggsave(
+#   filename = "05_choropleth/economist_choropleth_ggplot_r3.png",
+#   width = 3.5, 
+#   height = 3.4,
+#   units = "in",
+#   dpi = 300
+# )
+
+
+(
+  (
+    zero_na_legend + 
+      theme(
+        # plot.margin = unit(c(-10, 20,-10,20), "mm")
+        plot.margin = unit(c(0, 20, 0, 50), "pt")
+      )
+    ) + 
+    top_legend +
+      theme(
+        # plot.margin = unit(c(-10, 10, -10, 0), "mm")
+        plot.margin = unit(c(0, 20, 0, -10), "pt")
+      )
+  ) /
+  choropleth +
+  plot_layout(heights = c(0.02, 1)) +# Legend gets 0.2, main plot gets 1
+  plot_annotation(
+    title = "Federal Medicaid funding from hospital & nursing-\nhome taxes, forecast for fiscal year 2026, %"
+  ) &
+  theme(
+    plot.title = element_text(
+      size = 10,
+      family = "Arial Narrow Bold",
       hjust = 0.10
     ),
     plot.title.position = "plot",
@@ -287,58 +345,31 @@ zero_na_legend <-
   )
 
 
+# (
+#   (
+#     zero_na_legend + 
+#       theme(
+#         plot.margin = unit(c(-10, 20,-10,20), "mm")
+#       )
+#     ) + 
+#     top_legend +
+#       theme(
+#         plot.margin = unit(c(-10, 10, -10, 0), "mm")
+#       )
+#   ) +
+#   plot_layout(
+#     # heights = c(0.001, 0.001),
+#     nrow = 1
+#   ) 
+
+
+
+
+
 ggsave(
-  filename = "05_choropleth/economist_choropleth_ggplot.png",
+  filename = "05_choropleth/economist_choropleth_ggplot_R4.png",
   width = 3.5, 
   height = 3.4,
   units = "in",
   dpi = 300
 )
-
-
-# ggsave(
-#   filename = "05_choropleth/fifth_take_R1.png",
-#   width = 3, 
-#   height = 3.25,
-#   units = "in",
-#   dpi = 300
-# )
-
-# ggsave(
-#   filename = "05_choropleth/fifth_take_R2.png",
-#   width = 4, 
-#   height = 4.1,
-#   units = "in",
-#   dpi = 300
-# )
-
-# Original Dimensions
-# ggsave(
-#   filename = "05_choropleth/economist_choropleth_ggplot.png",
-#   width = 3.5, 
-#   height = 3.55,
-#   units = "in",
-#   dpi = 300
-# )
-
-# second take
-
-# ggsave(
-#   filename = "05_choropleth/economist_choropleth_ggplot_R1.png",
-#   width = 3.5, 
-#   height = 3.5,
-#   units = "in",
-#   dpi = 300
-# )
-
-# third take Use these dimensions ----
-
-# ggsave(
-#   filename = "05_choropleth/economist_choropleth_ggplot_R2.png",
-#   width = 3.5, 
-#   height = 3.4,
-#   units = "in",
-#   dpi = 300
-# )
-
-

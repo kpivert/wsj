@@ -1,4 +1,4 @@
-#  2025-07-27 Economist Choropleth in ggplot2
+# Economist U.S, State Grid Choropleth Function
 
 # 00 Libraries ------------------------------------------------------------
 
@@ -8,7 +8,6 @@ require(extrafont)
 loadfonts(quiet = TRUE)
 require(patchwork)
 require(tidyverse)
-
 
 # 01 Data -----------------------------------------------------------------
 
@@ -177,6 +176,7 @@ zero_na_df <-
     fill_color = c(pal[6])
   )
 
+
 top_legend <-
   ggplot(
     scale_df,
@@ -288,57 +288,9 @@ zero_na_legend <-
 
 
 ggsave(
-  filename = "05_choropleth/economist_choropleth_ggplot.png",
+  filename = "economist_choropleth_ggplot_R3.png",
   width = 3.5, 
   height = 3.4,
   units = "in",
   dpi = 300
 )
-
-
-# ggsave(
-#   filename = "05_choropleth/fifth_take_R1.png",
-#   width = 3, 
-#   height = 3.25,
-#   units = "in",
-#   dpi = 300
-# )
-
-# ggsave(
-#   filename = "05_choropleth/fifth_take_R2.png",
-#   width = 4, 
-#   height = 4.1,
-#   units = "in",
-#   dpi = 300
-# )
-
-# Original Dimensions
-# ggsave(
-#   filename = "05_choropleth/economist_choropleth_ggplot.png",
-#   width = 3.5, 
-#   height = 3.55,
-#   units = "in",
-#   dpi = 300
-# )
-
-# second take
-
-# ggsave(
-#   filename = "05_choropleth/economist_choropleth_ggplot_R1.png",
-#   width = 3.5, 
-#   height = 3.5,
-#   units = "in",
-#   dpi = 300
-# )
-
-# third take Use these dimensions ----
-
-# ggsave(
-#   filename = "05_choropleth/economist_choropleth_ggplot_R2.png",
-#   width = 3.5, 
-#   height = 3.4,
-#   units = "in",
-#   dpi = 300
-# )
-
-
