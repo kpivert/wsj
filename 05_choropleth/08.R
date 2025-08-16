@@ -301,3 +301,51 @@ zero_na_legend <-
 #   units = "in",
 #   dpi = 300
 # )
+
+
+(
+  (plot_spacer() +
+    zero_na_legend + 
+      theme(
+        plot.margin = unit(c(0,0,0,30), "pt")
+      )
+     + 
+    top_legend +
+    plot_spacer()
+  ) + 
+  plot_layout(widths = c(0.3,1,5,1.4), nrow = 1)
+) /
+  choropleth +
+  plot_layout(
+    heights = c(0.05, 1)#, 
+    # widths = c(0.6, 1)
+  ) +  # Legend gets 0.2, main plot gets 1
+  plot_annotation(
+    title = "Federal Medicaid funding from hospital & nursing-<br>home taxes, forecast for fiscal year 2026, %"
+  ) &
+  theme(
+    plot.title = element_textbox_simple(
+      size = 11,
+      family = "Arial Narrow Bold",
+      hjust = 0.25,
+      margin = margin(0, 0, 5, 0, unit = "pt")
+    ),
+    # plot.title.position = "plot",
+    plot.background = element_rect(
+        color = pal[6],
+        fill = pal[6]
+      ),
+      panel.background = element_rect(
+        fill = pal[6],
+        color = pal[6]
+      )
+  )
+
+# ggsave(
+#   filename = "05_choropleth/economist_choropleth_ggplot_R6.png",
+#   # width = 3.5, 
+#   width = 3.4, 
+#   height = 3.4,
+#   units = "in",
+#   dpi = 300
+# )
